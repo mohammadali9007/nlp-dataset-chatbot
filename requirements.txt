@@ -1,2 +1,5 @@
 streamlit
 google-genai
+pandas
+numpy
+scikit-learn
