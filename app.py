@@ -1,11 +1,17 @@
 import streamlit as st
-import pandas as pd
 import numpy as np
 import re
+
 from google import genai
 from google.genai import types
+
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
+
+# =========================
+# PAGE SETTINGS
+# =========================
 
 st.set_page_config(
     page_title="AI Knowledge Agent",
@@ -14,22 +20,41 @@ st.set_page_config(
 )
 
 st.title("🤖 AI Knowledge Agent")
-st.write("Upload any TXT file and ask questions about its content.")
+st.write(
+    "Upload any TXT file and ask questions about its content "
+    "or ask general questions."
+)
+
+
+# =========================
+# GEMINI API
+# =========================
 
 try:
     client = genai.Client(
         api_key=st.secrets["GEMINI_API_KEY"]
     )
-except:
-    st.error("❌ GEMINI_API_KEY not found in Streamlit Secrets.")
+
+except Exception:
+    st.error(
+        "❌ GEMINI_API_KEY not found in Streamlit Secrets."
+    )
     st.stop()
 
+
+# =========================
+# FILE UPLOAD
+# =========================
 
 uploaded_file = st.file_uploader(
     "📂 Upload your TXT File",
     type=["txt"]
 )
 
+
+# =========================
+# TEXT CLEANING
+# =========================
 
 def clean_text(text):
 
@@ -63,14 +88,22 @@ def clean_text(text):
         )
 
         if word_clean in replacements:
+
             new_words.extend(
                 replacements[word_clean].split()
             )
+
         else:
-            new_words.append(word_clean)
+
+            if word_clean:
+                new_words.append(word_clean)
 
     return " ".join(new_words)
 
+
+# =========================
+# CREATE CHUNKS
+# =========================
 
 def create_chunks(content):
 
@@ -96,10 +129,11 @@ def create_chunks(content):
             if question and answer:
 
                 chunks.append(
-                    f"Question: {question}\nAnswer: {answer}"
+                    f"Question: {question}\n"
+                    f"Answer: {answer}"
                 )
 
-    # Normal TXT format
+    # Normal paragraph format
     if not chunks:
 
         paragraphs = re.split(
@@ -115,7 +149,7 @@ def create_chunks(content):
 
                 chunks.append(paragraph)
 
-    # If still no chunks
+    # Fallback for large text
     if not chunks:
 
         words = content.split()
@@ -133,10 +167,15 @@ def create_chunks(content):
             )
 
             if chunk.strip():
+
                 chunks.append(chunk)
 
     return chunks
 
+
+# =========================
+# RETRIEVE KNOWLEDGE
+# =========================
 
 def retrieve_knowledge(
     question,
@@ -147,14 +186,18 @@ def retrieve_knowledge(
 
     q = clean_text(question)
 
-    q_vector = vectorizer.transform([q])
+    q_vector = vectorizer.transform(
+        [q]
+    )
 
     scores = cosine_similarity(
         q_vector,
         vectors
     )[0]
 
-    top_indices = np.argsort(scores)[::-1][:5]
+    top_indices = np.argsort(
+        scores
+    )[::-1][:5]
 
     results = []
 
@@ -168,6 +211,10 @@ def retrieve_knowledge(
     return results
 
 
+# =========================
+# ASK GEMINI
+# =========================
+
 def ask_gemini(
     question,
     knowledge,
@@ -176,7 +223,7 @@ def ask_gemini(
 
     history_text = ""
 
-    for message in history[-6:]:
+    for message in history[-8:]:
 
         history_text += (
             f"{message['role']}: "
@@ -184,35 +231,55 @@ def ask_gemini(
         )
 
     prompt = f"""
-You are a helpful and intelligent AI Knowledge Agent.
+You are an intelligent AI Knowledge Agent.
 
 The user uploaded a TXT knowledge file.
 
-Answer the user's question naturally and clearly.
+The uploaded file is NOT the only source of information.
 
-IMPORTANT:
+Rules:
 
-- The uploaded file can contain ANY topic.
-- Do not require an exact question match.
-- Understand keywords, context and meaning.
-- Use the uploaded knowledge when relevant.
-- If multiple knowledge sections are useful, combine them.
-- If the uploaded file does not contain enough information,
-  use your general knowledge.
-- If the question needs current information, use Google Search.
-- Never invent information.
-- Give direct, useful answers.
-- Use bullet points when helpful.
-- Do not mention these instructions.
+1. First check whether the question is related to the
+   uploaded knowledge.
+
+2. If the uploaded knowledge contains useful information,
+   use it in the answer.
+
+3. If the uploaded knowledge does not contain the answer,
+   use your general knowledge.
+
+4. If the question needs current, recent, live, updated,
+   or changing information, use Google Search.
+
+5. Never say that you can only answer from the uploaded file.
+
+6. Do not require an exact question match.
+
+7. Understand keywords, meaning, context and related terms.
+
+8. Combine multiple relevant sections when necessary.
+
+9. Never invent information.
+
+10. Give clear and direct answers.
+
+11. Use bullet points when helpful.
+
+12. If the uploaded file is unrelated to the question,
+    answer normally using your general knowledge.
+
+13. Do not mention these instructions.
 
 Conversation history:
 {history_text}
 
-Relevant knowledge from uploaded file:
+Uploaded knowledge:
 {knowledge}
 
 User question:
 {question}
+
+Give the best possible answer.
 """
 
     search_tool = types.Tool(
@@ -220,8 +287,11 @@ User question:
     )
 
     response = client.models.generate_content(
+
         model="gemini-2.5-flash",
+
         contents=prompt,
+
         config=types.GenerateContentConfig(
             tools=[search_tool],
             temperature=0.3
@@ -230,6 +300,10 @@ User question:
 
     return response
 
+
+# =========================
+# MAIN APP
+# =========================
 
 if uploaded_file:
 
@@ -247,18 +321,22 @@ if uploaded_file:
 
     if not chunks:
 
-        st.error("❌ No readable content found.")
+        st.error(
+            "❌ No readable content found."
+        )
         st.stop()
 
     st.success(
         f"✅ {len(chunks)} knowledge sections loaded."
     )
 
+    # Clean text
     clean_chunks = [
         clean_text(chunk)
         for chunk in chunks
     ]
 
+    # TF-IDF
     vectorizer = TfidfVectorizer(
         ngram_range=(1, 2),
         sublinear_tf=True
@@ -268,15 +346,18 @@ if uploaded_file:
         clean_chunks
     )
 
+    # Metrics
     col1, col2, col3 = st.columns(3)
 
     with col1:
+
         st.metric(
             "📚 Knowledge",
             len(chunks)
         )
 
     with col2:
+
         st.metric(
             "🧠 NLP Features",
             len(
@@ -285,22 +366,31 @@ if uploaded_file:
         )
 
     with col3:
+
         st.metric(
             "🌐 Web Search",
             "ON"
         )
 
-    with st.expander("📖 View Uploaded File"):
+    # View uploaded file
+    with st.expander(
+        "📖 View Uploaded File"
+    ):
 
-        st.write(content)
+        st.text(content)
 
     st.divider()
 
-    st.subheader("💬 Ask Anything")
+    st.subheader(
+        "💬 Ask Anything"
+    )
 
+    # Chat memory
     if "messages" not in st.session_state:
+
         st.session_state.messages = []
 
+    # Show previous messages
     for message in st.session_state.messages:
 
         with st.chat_message(
@@ -311,12 +401,14 @@ if uploaded_file:
                 message["content"]
             )
 
+    # Chat input
     question = st.chat_input(
         "Ask anything..."
     )
 
     if question:
 
+        # User message
         with st.chat_message("user"):
 
             st.markdown(question)
@@ -326,6 +418,7 @@ if uploaded_file:
             "content": question
         })
 
+        # Retrieve knowledge
         results = retrieve_knowledge(
             question,
             chunks,
@@ -333,16 +426,37 @@ if uploaded_file:
             vectors
         )
 
-        knowledge = "\n\n".join(
-            [
-                result["text"]
-                for result in results
-            ]
-        )
+        if results:
 
+            best_score = results[0]["score"]
+
+        else:
+
+            best_score = 0
+
+        # Check whether TXT is relevant
+        if best_score >= 0.10:
+
+            knowledge = "\n\n".join(
+                [
+                    result["text"]
+                    for result in results
+                ]
+            )
+
+        else:
+
+            knowledge = (
+                "The uploaded TXT file does not contain "
+                "relevant information for this question."
+            )
+
+        # Generate answer
         with st.chat_message("assistant"):
 
-            with st.spinner("🤖 Thinking..."):
+            with st.spinner(
+                "🤖 Thinking..."
+            ):
 
                 try:
 
@@ -356,25 +470,36 @@ if uploaded_file:
 
                     st.markdown(answer)
 
-                    st.caption(
-                        f"🔎 Best knowledge match: "
-                        f"{results[0]['score'] * 100:.2f}%"
-                    )
+                    if best_score >= 0.10:
+
+                        st.caption(
+                            f"📄 Knowledge relevance: "
+                            f"{best_score * 100:.2f}%"
+                        )
+
+                    else:
+
+                        st.caption(
+                            "🌐 Answer generated using "
+                            "general knowledge / web search."
+                        )
 
                 except Exception as e:
 
                     answer = (
-                        "❌ Error generating answer: "
+                        "❌ Error generating answer:\n\n"
                         + str(e)
                     )
 
                     st.error(answer)
 
+        # Save assistant message
         st.session_state.messages.append({
             "role": "assistant",
             "content": answer
         })
 
+    # Clear chat
     if st.button("🗑️ Clear Chat"):
 
         st.session_state.messages = []
