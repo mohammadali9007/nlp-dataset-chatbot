@@ -49,12 +49,16 @@ def get_gemini_client():
         api_key = None
 
         try:
-            api_key = st.secrets.get("GEMINI_API_KEY")
+            api_key = st.secrets.get(
+                "GEMINI_API_KEY"
+            )
         except Exception:
             pass
 
         if not api_key:
-            api_key = os.getenv("GEMINI_API_KEY")
+            api_key = os.getenv(
+                "GEMINI_API_KEY"
+            )
 
         if not api_key:
             return None
@@ -235,10 +239,6 @@ if uploaded_files:
 
         filename = uploaded_file.name
 
-        # -------------------------
-        # CSV
-        # -------------------------
-
         if filename.lower().endswith(".csv"):
 
             df = read_csv_file(
@@ -250,10 +250,6 @@ if uploaded_files:
                 st.session_state.csv_data[
                     filename
                 ] = df
-
-        # -------------------------
-        # TXT
-        # -------------------------
 
         elif filename.lower().endswith(".txt"):
 
@@ -386,7 +382,7 @@ if st.session_state.csv_data:
 
 
 # =========================================================
-# TXT FILE DETAILS
+# TXT DETAILS
 # =========================================================
 
 if st.session_state.txt_data:
@@ -411,402 +407,223 @@ if st.session_state.txt_data:
 
 
 # =========================================================
-# TXT Q&A DATASET SEARCH
+# COLUMN FULL FORM / MEANING DATABASE
 # =========================================================
 
-def search_qa_dataset(question):
+COLUMN_INFO = {
 
-    best_answer = None
-    best_question = None
-    best_score = 0
-    best_file = None
+    # Diabetes Dataset
+    "Pregnancies": {
+        "full_form": "Number of Pregnancies",
+        "meaning": "Number of times the patient has been pregnant."
+    },
 
-    normalized_question = normalize_text(
-        question
+    "Glucose": {
+        "full_form": "Plasma Glucose Concentration",
+        "meaning": "Blood glucose level measured during the test."
+    },
+
+    "BloodPressure": {
+        "full_form": "Diastolic Blood Pressure",
+        "meaning": "Diastolic blood pressure measured in mm Hg."
+    },
+
+    "SkinThickness": {
+        "full_form": "Triceps Skin Fold Thickness",
+        "meaning": "Skin fold thickness measured at the triceps area."
+    },
+
+    "Insulin": {
+        "full_form": "Serum Insulin",
+        "meaning": "Serum insulin level measured during the test."
+    },
+
+    "BMI": {
+        "full_form": "Body Mass Index",
+        "meaning": "A measure based on body weight and height."
+    },
+
+    "DiabetesPedigreeFunction": {
+        "full_form": "Diabetes Pedigree Function",
+        "meaning": "A score representing the likelihood of diabetes based on family history."
+    },
+
+    "Age": {
+        "full_form": "Age",
+        "meaning": "Age of the patient in years."
+    },
+
+    "Outcome": {
+        "full_form": "Diabetes Outcome",
+        "meaning": "Diabetes result. Usually 1 means diabetic and 0 means non-diabetic."
+    },
+
+
+    # Kidney Dataset
+    "id": {
+        "full_form": "Patient ID",
+        "meaning": "Unique identification number of the patient."
+    },
+
+    "age": {
+        "full_form": "Age",
+        "meaning": "Age of the patient in years."
+    },
+
+    "bp": {
+        "full_form": "Blood Pressure",
+        "meaning": "Blood pressure of the patient."
+    },
+
+    "sg": {
+        "full_form": "Specific Gravity",
+        "meaning": "Specific gravity of urine."
+    },
+
+    "al": {
+        "full_form": "Albumin",
+        "meaning": "Albumin level detected in urine."
+    },
+
+    "su": {
+        "full_form": "Sugar",
+        "meaning": "Sugar level detected in urine."
+    },
+
+    "rbc": {
+        "full_form": "Red Blood Cells",
+        "meaning": "Presence or condition of red blood cells in urine."
+    },
+
+    "pc": {
+        "full_form": "Pus Cell",
+        "meaning": "Presence or condition of pus cells in urine."
+    },
+
+    "pcc": {
+        "full_form": "Pus Cell Clumps",
+        "meaning": "Presence of pus cell clumps in urine."
+    },
+
+    "ba": {
+        "full_form": "Bacteria",
+        "meaning": "Presence of bacteria in urine."
+    },
+
+    "bgr": {
+        "full_form": "Blood Glucose Random",
+        "meaning": "Random blood glucose level."
+    },
+
+    "bu": {
+        "full_form": "Blood Urea",
+        "meaning": "Blood urea level."
+    },
+
+    "sc": {
+        "full_form": "Serum Creatinine",
+        "meaning": "Creatinine level in the blood."
+    },
+
+    "sod": {
+        "full_form": "Sodium",
+        "meaning": "Sodium concentration in the blood."
+    },
+
+    "pot": {
+        "full_form": "Potassium",
+        "meaning": "Potassium concentration in the blood."
+    },
+
+    "hemo": {
+        "full_form": "Hemoglobin",
+        "meaning": "Hemoglobin level in the blood."
+    },
+
+    "pcv": {
+        "full_form": "Packed Cell Volume",
+        "meaning": "Percentage of blood volume occupied by red blood cells."
+    },
+
+    "wc": {
+        "full_form": "White Blood Cell Count",
+        "meaning": "Number of white blood cells in the blood."
+    },
+
+    "rc": {
+        "full_form": "Red Blood Cell Count",
+        "meaning": "Number of red blood cells in the blood."
+    },
+
+    "htn": {
+        "full_form": "Hypertension",
+        "meaning": "Indicates whether the patient has high blood pressure."
+    },
+
+    "dm": {
+        "full_form": "Diabetes Mellitus",
+        "meaning": "Indicates whether the patient has diabetes."
+    },
+
+    "cad": {
+        "full_form": "Coronary Artery Disease",
+        "meaning": "Indicates whether the patient has coronary artery disease."
+    },
+
+    "appet": {
+        "full_form": "Appetite",
+        "meaning": "Indicates the patient's appetite condition."
+    },
+
+    "pe": {
+        "full_form": "Pedal Edema",
+        "meaning": "Indicates swelling or edema in the feet."
+    },
+
+    "ane": {
+        "full_form": "Anemia",
+        "meaning": "Indicates whether the patient has anemia."
+    },
+
+    "classification": {
+        "full_form": "Disease Classification",
+        "meaning": "The final classification or category of the patient's condition."
+    }
+}
+
+
+# =========================================================
+# FIND COLUMN INFORMATION
+# =========================================================
+
+def get_column_info(column_name):
+
+    column_name = str(
+        column_name
     )
 
-    for filename, text in st.session_state.txt_data.items():
+    # Exact match
+    if column_name in COLUMN_INFO:
 
-        for line in text.splitlines():
+        return COLUMN_INFO[
+            column_name
+        ]
 
-            if "|" not in line:
-                continue
-
-            parts = line.split(
-                "|",
-                1
-            )
-
-            if len(parts) != 2:
-                continue
-
-            stored_question = parts[0].strip()
-            stored_answer = parts[1].strip()
-
-            if not stored_question:
-                continue
-
-            if not stored_answer:
-                continue
-
-            normalized_stored = normalize_text(
-                stored_question
-            )
-
-            # Exact match
-            if (
-                normalized_question
-                == normalized_stored
-            ):
-
-                return {
-                    "answer": stored_answer,
-                    "question": stored_question,
-                    "score": 1.0,
-                    "file": filename
-                }
-
-            # Similarity
-            sim = similarity(
-                question,
-                stored_question
-            )
-
-            # Word overlap
-            q_words = set(
-                normalized_question.split()
-            )
-
-            s_words = set(
-                normalized_stored.split()
-            )
-
-            overlap = 0
-
-            if q_words:
-
-                overlap = len(
-                    q_words.intersection(
-                        s_words
-                    )
-                ) / len(q_words)
-
-            score = (
-                sim * 0.7
-                + overlap * 0.3
-            )
-
-            if score > best_score:
-
-                best_score = score
-                best_answer = stored_answer
-                best_question = stored_question
-                best_file = filename
-
-    if best_score >= 0.68:
-
-        return {
-            "answer": best_answer,
-            "question": best_question,
-            "score": best_score,
-            "file": best_file
-        }
-
-    return None
-
-
-# =========================================================
-# LOCAL INTENT ANSWERS
-# =========================================================
-
-def local_intent_answer(question):
-
-    q = normalize_text(
-        question
-    )
-
-    greetings = [
-        "hi",
-        "hello",
-        "hey",
-        "hi there",
-        "hello there",
-        "good morning",
-        "good afternoon",
-        "good evening"
-    ]
-
-    for item in greetings:
+    # Case-insensitive match
+    for key, info in COLUMN_INFO.items():
 
         if (
-            q == item
-            or similarity(q, item) >= 0.90
+            key.lower()
+            == column_name.lower()
         ):
 
-            return (
-                "Hello! 👋 "
-                "How can I help you today?"
-            )
+            return info
 
-    if (
-        similarity(
-            q,
-            "how are you"
-        ) >= 0.80
-        or similarity(
-            q,
-            "how are u"
-        ) >= 0.80
-    ):
-
-        return (
-            "I'm doing great! 😊 "
-            "Thanks for asking. "
-            "How can I help you?"
-        )
-
-    capability_questions = [
-        "what can you do",
-        "what do you do",
-        "what are you doing",
-        "what are you do",
-        "what can u do"
-    ]
-
-    for item in capability_questions:
-
-        if similarity(
-            q,
-            item
-        ) >= 0.78:
-
-            return (
-                "I can answer questions from "
-                "your uploaded CSV and TXT files, "
-                "perform basic data analysis, and "
-                "answer general AI and programming questions."
-            )
-
-    if similarity(
-        q,
-        "can you help me"
-    ) >= 0.80:
-
-        return (
-            "Of course! 😊 "
-            "Ask me a question and I'll try to help."
-        )
-
-    if (
-        similarity(
-            q,
-            "are you a chatbot"
-        ) >= 0.80
-    ):
-
-        return (
-            "Yes! 🤖 I'm IntelliMind AI, "
-            "an AI-powered question-answering chatbot."
-        )
-
-    if (
-        similarity(
-            q,
-            "who are you"
-        ) >= 0.80
-    ):
-
-        return (
-            "I'm IntelliMind AI, "
-            "an AI-powered question-answering assistant."
-        )
-
-    thanks = [
-        "thanks",
-        "thank you",
-        "thank u"
-    ]
-
-    for item in thanks:
-
-        if similarity(
-            q,
-            item
-        ) >= 0.85:
-
-            return "You're welcome! 😊"
-
-    goodbye = [
-        "goodbye",
-        "bye",
-        "see you"
-    ]
-
-    for item in goodbye:
-
-        if similarity(
-            q,
-            item
-        ) >= 0.85:
-
-            return (
-                "Goodbye! 👋 "
-                "Have a great day!"
-            )
-
-    return None
-
-
-# =========================================================
-# BUILT-IN KNOWLEDGE
-# =========================================================
-
-def built_in_answer(question):
-
-    q = normalize_text(
-        question
-    )
-
-    concepts = {
-
-        "AI": {
-            "patterns": [
-                "what is ai",
-                "ai meaning",
-                "ai full form",
-                "full form of ai",
-                "define ai"
-            ],
-            "answer": (
-                "AI stands for Artificial Intelligence. "
-                "AI is a field of computer science that "
-                "allows computers to perform tasks that "
-                "normally require human intelligence."
-            )
-        },
-
-        "ML": {
-            "patterns": [
-                "what is ml",
-                "ml meaning",
-                "ml full form",
-                "full form of ml",
-                "define ml",
-                "machine learning"
-            ],
-            "answer": (
-                "ML stands for Machine Learning. "
-                "Machine Learning is a branch of AI that "
-                "allows computers to learn patterns from "
-                "data and make predictions or decisions."
-            )
-        },
-
-        "DL": {
-            "patterns": [
-                "what is dl",
-                "dl meaning",
-                "dl full form",
-                "full form of dl",
-                "define dl",
-                "deep learning"
-            ],
-            "answer": (
-                "DL stands for Deep Learning. "
-                "Deep Learning is a subfield of Machine "
-                "Learning that uses multi-layer neural "
-                "networks to learn complex patterns."
-            )
-        },
-
-        "CV": {
-            "patterns": [
-                "what is cv",
-                "cv meaning",
-                "cv full form",
-                "full form of cv",
-                "define cv",
-                "computer vision"
-            ],
-            "answer": (
-                "CV stands for Computer Vision. "
-                "Computer Vision is a field of AI that "
-                "enables computers to understand and "
-                "analyze images and videos."
-            )
-        },
-
-        "NLP": {
-            "patterns": [
-                "what is nlp",
-                "nlp meaning",
-                "nlp full form",
-                "full form of nlp",
-                "define nlp",
-                "natural language processing"
-            ],
-            "answer": (
-                "NLP stands for Natural Language Processing. "
-                "NLP is a branch of AI that enables computers "
-                "to process, understand, and generate human language."
-            )
-        },
-
-        "Python": {
-            "patterns": [
-                "what is python",
-                "python meaning",
-                "define python"
-            ],
-            "answer": (
-                "Python is a high-level programming language "
-                "widely used in web development, data science, "
-                "machine learning, AI, and automation."
-            )
-        }
+    # Generic fallback
+    return {
+        "full_form": column_name,
+        "meaning": f"Data field representing {column_name}."
     }
-
-    for concept, data in concepts.items():
-
-        for pattern in data["patterns"]:
-
-            if q == normalize_text(
-                pattern
-            ):
-
-                return data["answer"]
-
-            if similarity(
-                q,
-                pattern
-            ) >= 0.82:
-
-                return data["answer"]
-
-    # Short forms
-    short_forms = {
-
-        "ai":
-            "AI stands for Artificial Intelligence.",
-
-        "ml":
-            "ML stands for Machine Learning.",
-
-        "dl":
-            "DL stands for Deep Learning.",
-
-        "cv":
-            "CV stands for Computer Vision.",
-
-        "nlp":
-            "NLP stands for Natural Language Processing."
-    }
-
-    if q in short_forms:
-
-        return short_forms[q]
-
-    return None
 
 
 # =========================================================
@@ -820,8 +637,7 @@ COLUMN_SYNONYMS = {
         "blood sugar",
         "blood glucose",
         "sugar",
-        "glucose level",
-        "blood sugar level"
+        "glucose level"
     ],
 
     "bloodpressure": [
@@ -895,6 +711,48 @@ COLUMN_SYNONYMS = {
         "pot"
     ],
 
+    "bgr": [
+        "random blood glucose",
+        "blood glucose random",
+        "bgr"
+    ],
+
+    "pcv": [
+        "packed cell volume",
+        "pcv"
+    ],
+
+    "wc": [
+        "white blood cell",
+        "white blood cell count",
+        "wbc",
+        "wc"
+    ],
+
+    "rc": [
+        "red blood cell",
+        "red blood cell count",
+        "rbc count",
+        "rc"
+    ],
+
+    "htn": [
+        "hypertension",
+        "high blood pressure",
+        "htn"
+    ],
+
+    "dm": [
+        "diabetes mellitus",
+        "diabetes",
+        "dm"
+    ],
+
+    "cad": [
+        "coronary artery disease",
+        "cad"
+    ],
+
     "classification": [
         "classification",
         "class",
@@ -904,7 +762,7 @@ COLUMN_SYNONYMS = {
 
 
 # =========================================================
-# FIND COLUMNS
+# FIND RELEVANT COLUMNS
 # =========================================================
 
 def find_relevant_columns(question):
@@ -927,7 +785,7 @@ def find_relevant_columns(question):
 
     found = []
 
-    # Direct match
+    # Direct matching
     for col in all_columns:
 
         col_normalized = normalize_text(
@@ -938,17 +796,19 @@ def find_relevant_columns(question):
 
             found.append(col)
 
-    # Synonyms
+    # Synonym matching
     for actual_column, words in COLUMN_SYNONYMS.items():
 
         real_column = None
 
         for col in all_columns:
 
-            if normalize_text(col) == actual_column:
+            if (
+                normalize_text(col)
+                == actual_column
+            ):
 
                 real_column = col
-
                 break
 
         if real_column is None:
@@ -956,7 +816,11 @@ def find_relevant_columns(question):
 
         for word in words:
 
-            if normalize_text(word) in q:
+            word_normalized = normalize_text(
+                word
+            )
+
+            if word_normalized in q:
 
                 if real_column not in found:
 
@@ -970,62 +834,26 @@ def find_relevant_columns(question):
 
 
 # =========================================================
-# FIND BEST CSV
-# =========================================================
-
-def find_best_csv(question):
-
-    if not st.session_state.csv_data:
-
-        return None, None
-
-    relevant = find_relevant_columns(
-        question
-    )
-
-    if relevant:
-
-        for filename, df in st.session_state.csv_data.items():
-
-            for col in relevant:
-
-                if col in df.columns:
-
-                    return filename, df
-
-    filename = list(
-        st.session_state.csv_data.keys()
-    )[0]
-
-    return (
-        filename,
-        st.session_state.csv_data[
-            filename
-        ]
-    )
-
-
-# =========================================================
-# DIRECT CSV ANALYSIS
+# CSV ANALYSIS
 # =========================================================
 
 def direct_csv_analysis(question):
 
     if not st.session_state.csv_data:
 
-        return None
+        return None, []
 
     q = normalize_text(
         question
     )
 
-    filename, df = find_best_csv(
-        question
-    )
+    filename = list(
+        st.session_state.csv_data.keys()
+    )[0]
 
-    if df is None:
-
-        return None
+    df = st.session_state.csv_data[
+        filename
+    ]
 
     relevant = find_relevant_columns(
         question
@@ -1048,7 +876,8 @@ def direct_csv_analysis(question):
 
         return (
             f"The dataset contains "
-            f"**{len(df):,} rows**."
+            f"**{len(df):,} rows**.",
+            []
         )
 
 
@@ -1060,12 +889,12 @@ def direct_csv_analysis(question):
         "how many columns" in q
         or "number of columns" in q
         or "total columns" in q
-        or "how many fields" in q
     ):
 
         return (
             f"The dataset contains "
-            f"**{len(df.columns)} columns**."
+            f"**{len(df.columns)} columns**.",
+            []
         )
 
 
@@ -1088,25 +917,25 @@ def direct_csv_analysis(question):
         )
 
         return (
-            f"The columns are:\n\n"
-            f"{columns}"
+            f"The columns are:\n\n{columns}",
+            []
         )
 
 
     # =====================================================
-    # DATASET SHAPE
+    # SHAPE
     # =====================================================
 
     if (
         "shape" in q
         or "dataset size" in q
-        or "size of dataset" in q
     ):
 
         return (
             f"The dataset has "
             f"**{len(df):,} rows** and "
-            f"**{len(df.columns)} columns**."
+            f"**{len(df.columns)} columns**.",
+            []
         )
 
 
@@ -1126,34 +955,13 @@ def direct_csv_analysis(question):
 
         return (
             f"The dataset contains "
-            f"**{missing:,} missing values**."
+            f"**{missing:,} missing values**.",
+            []
         )
 
 
     # =====================================================
-    # UNIQUE
-    # =====================================================
-
-    if "unique values" in q:
-
-        if relevant:
-
-            col = relevant[0]
-
-            if col in df.columns:
-
-                count = df[col].nunique(
-                    dropna=True
-                )
-
-                return (
-                    f"**{col}** has "
-                    f"**{count:,} unique values**."
-                )
-
-
-    # =====================================================
-    # DIABETIC COUNT
+    # DIABETIC PATIENTS
     # =====================================================
 
     if (
@@ -1170,7 +978,6 @@ def direct_csv_analysis(question):
             if normalize_text(col) == "outcome":
 
                 outcome_col = col
-
                 break
 
         if outcome_col:
@@ -1186,8 +993,9 @@ def direct_csv_analysis(question):
 
             return (
                 f"There are **{count:,} "
-                f"diabetic patients** "
-                f"in the dataset."
+                f"diabetic patients** in "
+                f"the dataset.",
+                [outcome_col]
             )
 
 
@@ -1220,7 +1028,8 @@ def direct_csv_analysis(question):
 
                     return (
                         f"The average **{col}** "
-                        f"is **{avg:.2f}**."
+                        f"is **{avg:.2f}**.",
+                        [col]
                     )
 
 
@@ -1253,7 +1062,8 @@ def direct_csv_analysis(question):
 
                     return (
                         f"The highest **{col}** "
-                        f"value is **{maximum}**."
+                        f"value is **{maximum}**.",
+                        [col]
                     )
 
 
@@ -1285,7 +1095,8 @@ def direct_csv_analysis(question):
 
                     return (
                         f"The lowest **{col}** "
-                        f"value is **{minimum}**."
+                        f"value is **{minimum}**.",
+                        [col]
                     )
 
 
@@ -1316,7 +1127,8 @@ def direct_csv_analysis(question):
 
                     return (
                         f"The total **{col}** "
-                        f"is **{total:,.2f}**."
+                        f"is **{total:,.2f}**.",
+                        [col]
                     )
 
 
@@ -1343,8 +1155,359 @@ def direct_csv_analysis(question):
 
                     return (
                         f"The median **{col}** "
-                        f"is **{median:.2f}**."
+                        f"is **{median:.2f}**.",
+                        [col]
                     )
+
+
+    # =====================================================
+    # COLUMN INFORMATION QUESTION
+    # =====================================================
+
+    if (
+        "meaning" in q
+        or "full form" in q
+        or "what does" in q
+        or "what is" in q
+    ):
+
+        if relevant:
+
+            col = relevant[0]
+
+            info = get_column_info(
+                col
+            )
+
+            return (
+                f"**{col}** means "
+                f"**{info['full_form']}**.",
+                [col]
+            )
+
+    return None, []
+
+
+# =========================================================
+# TXT Q&A SEARCH
+# =========================================================
+
+def search_qa_dataset(question):
+
+    best_answer = None
+    best_score = 0
+
+    normalized_question = normalize_text(
+        question
+    )
+
+    for filename, text in st.session_state.txt_data.items():
+
+        for line in text.splitlines():
+
+            if "|" not in line:
+                continue
+
+            parts = line.split(
+                "|",
+                1
+            )
+
+            if len(parts) != 2:
+                continue
+
+            stored_question = parts[0].strip()
+            stored_answer = parts[1].strip()
+
+            if not stored_question:
+                continue
+
+            if not stored_answer:
+                continue
+
+            normalized_stored = normalize_text(
+                stored_question
+            )
+
+            if (
+                normalized_question
+                == normalized_stored
+            ):
+
+                return stored_answer
+
+            score = similarity(
+                question,
+                stored_question
+            )
+
+            if score > best_score:
+
+                best_score = score
+                best_answer = stored_answer
+
+    if best_score >= 0.68:
+
+        return best_answer
+
+    return None
+
+
+# =========================================================
+# LOCAL INTENT
+# =========================================================
+
+def local_intent_answer(question):
+
+    q = normalize_text(
+        question
+    )
+
+    greetings = [
+        "hi",
+        "hello",
+        "hey",
+        "hi there",
+        "hello there",
+        "good morning",
+        "good afternoon",
+        "good evening"
+    ]
+
+    for item in greetings:
+
+        if (
+            q == item
+            or similarity(q, item) >= 0.90
+        ):
+
+            return (
+                "Hello! 👋 "
+                "How can I help you today?"
+            )
+
+    if similarity(
+        q,
+        "how are you"
+    ) >= 0.80:
+
+        return (
+            "I'm doing great! 😊 "
+            "Thanks for asking. "
+            "How can I help you?"
+        )
+
+    capability_questions = [
+        "what can you do",
+        "what do you do",
+        "what are you doing",
+        "what are you do",
+        "what can u do"
+    ]
+
+    for item in capability_questions:
+
+        if similarity(
+            q,
+            item
+        ) >= 0.78:
+
+            return (
+                "I can answer questions from "
+                "your uploaded CSV and TXT files, "
+                "perform data analysis, and answer "
+                "general AI and programming questions."
+            )
+
+    if similarity(
+        q,
+        "can you help me"
+    ) >= 0.80:
+
+        return (
+            "Of course! 😊 "
+            "Ask me a question and I'll try to help."
+        )
+
+    if similarity(
+        q,
+        "who are you"
+    ) >= 0.80:
+
+        return (
+            "I'm IntelliMind AI, "
+            "an AI-powered question-answering assistant."
+        )
+
+    if similarity(
+        q,
+        "are you a chatbot"
+    ) >= 0.80:
+
+        return (
+            "Yes! 🤖 I'm IntelliMind AI, "
+            "an AI-powered chatbot."
+        )
+
+    for item in [
+        "thanks",
+        "thank you",
+        "thank u"
+    ]:
+
+        if similarity(
+            q,
+            item
+        ) >= 0.85:
+
+            return "You're welcome! 😊"
+
+    for item in [
+        "goodbye",
+        "bye",
+        "see you"
+    ]:
+
+        if similarity(
+            q,
+            item
+        ) >= 0.85:
+
+            return (
+                "Goodbye! 👋 "
+                "Have a great day!"
+            )
+
+    return None
+
+
+# =========================================================
+# BUILT-IN AI / ML / DL / CV / NLP
+# =========================================================
+
+def built_in_answer(question):
+
+    q = normalize_text(
+        question
+    )
+
+    concepts = {
+
+        "AI": (
+            [
+                "what is ai",
+                "ai meaning",
+                "ai full form",
+                "full form of ai",
+                "define ai"
+            ],
+            "AI stands for **Artificial Intelligence**. "
+            "It enables computers to perform tasks that "
+            "normally require human intelligence."
+        ),
+
+        "ML": (
+            [
+                "what is ml",
+                "ml meaning",
+                "ml full form",
+                "full form of ml",
+                "define ml"
+            ],
+            "ML stands for **Machine Learning**. "
+            "It allows computers to learn patterns from "
+            "data and make predictions or decisions."
+        ),
+
+        "DL": (
+            [
+                "what is dl",
+                "dl meaning",
+                "dl full form",
+                "full form of dl",
+                "define dl"
+            ],
+            "DL stands for **Deep Learning**. "
+            "It uses multi-layer neural networks to learn "
+            "complex patterns from data."
+        ),
+
+        "CV": (
+            [
+                "what is cv",
+                "cv meaning",
+                "cv full form",
+                "full form of cv",
+                "define cv"
+            ],
+            "CV stands for **Computer Vision**. "
+            "It enables computers to understand and "
+            "analyze images and videos."
+        ),
+
+        "NLP": (
+            [
+                "what is nlp",
+                "nlp meaning",
+                "nlp full form",
+                "full form of nlp",
+                "define nlp"
+            ],
+            "NLP stands for **Natural Language Processing**. "
+            "It enables computers to process, understand, "
+            "and generate human language."
+        ),
+
+        "Python": (
+            [
+                "what is python",
+                "python meaning",
+                "define python"
+            ],
+            "**Python** is a high-level programming language "
+            "widely used in AI, Machine Learning, Data Science, "
+            "Web Development, and Automation."
+        )
+    }
+
+    for concept, data in concepts.items():
+
+        patterns, answer = data
+
+        for pattern in patterns:
+
+            if q == normalize_text(pattern):
+
+                return answer
+
+            if similarity(
+                q,
+                pattern
+            ) >= 0.82:
+
+                return answer
+
+    short_forms = {
+
+        "ai":
+            "AI stands for **Artificial Intelligence**.",
+
+        "ml":
+            "ML stands for **Machine Learning**.",
+
+        "dl":
+            "DL stands for **Deep Learning**.",
+
+        "cv":
+            "CV stands for **Computer Vision**.",
+
+        "nlp":
+            "NLP stands for **Natural Language Processing**."
+    }
+
+    if q in short_forms:
+
+        return short_forms[q]
 
     return None
 
@@ -1403,10 +1566,6 @@ def split_text(
     return chunks
 
 
-# =========================================================
-# SEARCH TXT
-# =========================================================
-
 def search_txt(
     question,
     top_k=5
@@ -1417,7 +1576,6 @@ def search_txt(
         return []
 
     documents = []
-    filenames = []
 
     for filename, text in st.session_state.txt_data.items():
 
@@ -1425,15 +1583,9 @@ def search_txt(
             text
         )
 
-        for chunk in chunks:
-
-            documents.append(
-                chunk
-            )
-
-            filenames.append(
-                filename
-            )
+        documents.extend(
+            chunks
+        )
 
     if not documents:
 
@@ -1468,13 +1620,9 @@ def search_txt(
 
             if scores[idx] > 0.05:
 
-                results.append({
-                    "text": documents[idx],
-                    "score": float(
-                        scores[idx]
-                    ),
-                    "file": filenames[idx]
-                })
+                results.append(
+                    documents[idx]
+                )
 
         return results
 
@@ -1484,7 +1632,7 @@ def search_txt(
 
 
 # =========================================================
-# BUILD CSV CONTEXT
+# BUILD CONTEXT
 # =========================================================
 
 def build_csv_context(question):
@@ -1536,10 +1684,6 @@ DATA:
     )
 
 
-# =========================================================
-# BUILD TXT CONTEXT
-# =========================================================
-
 def build_txt_context(question):
 
     results = search_txt(
@@ -1550,26 +1694,13 @@ def build_txt_context(question):
 
         return ""
 
-    context = []
-
-    for item in results:
-
-        context.append(
-            f"""
-FILE: {item['file']}
-
-CONTENT:
-{item['text']}
-"""
-        )
-
-    return "\n".join(
-        context
+    return "\n\n".join(
+        results
     )
 
 
 # =========================================================
-# GEMINI ANSWER
+# GEMINI
 # =========================================================
 
 def generate_ai_answer(
@@ -1582,28 +1713,26 @@ def generate_ai_answer(
 
     if client is None:
 
-        return None, "API key not configured"
+        return None
 
     prompt = f"""
 You are IntelliMind AI.
 
-Answer the user's question clearly and naturally.
+Answer the user's question clearly.
 
 USER QUESTION:
 {question}
 
 RULES:
 
-1. Use uploaded CSV data when the question is about CSV.
-2. Never invent CSV numbers.
-3. If numerical analysis is required, use the actual data.
-4. Use TXT information when relevant.
-5. If the question is a general educational question,
-   answer normally.
-6. Keep answers concise but useful.
-7. Do not mention internal processing.
-8. Do not show column evidence unless the user explicitly asks.
-9. Do not say that you cannot access the uploaded files.
+- Use uploaded CSV data when relevant.
+- Never invent CSV numbers.
+- Use TXT information when relevant.
+- Answer general questions normally.
+- Keep the answer simple.
+- Do not show internal processing.
+- Do not show relevant column tables.
+- Do not hallucinate data.
 
 CSV DATA:
 {csv_context if csv_context else "No CSV uploaded."}
@@ -1611,7 +1740,7 @@ CSV DATA:
 TXT DATA:
 {txt_context if txt_context else "No TXT information found."}
 
-Now answer the user.
+Answer now.
 """
 
     try:
@@ -1623,20 +1752,53 @@ Now answer the user.
 
         if response and response.text:
 
-            return (
-                response.text.strip(),
-                None
-            )
+            return response.text.strip()
 
-        return None, "Empty response"
+    except Exception:
 
-    except Exception as e:
+        return None
 
-        return None, str(e)
+    return None
 
 
 # =========================================================
-# SHOW CHAT HISTORY
+# SHOW COLUMN INFORMATION
+# =========================================================
+
+def show_column_information(columns):
+
+    if not columns:
+        return
+
+    # Remove duplicates
+    unique_columns = []
+
+    for col in columns:
+
+        if col not in unique_columns:
+
+            unique_columns.append(col)
+
+    if not unique_columns:
+        return
+
+    st.caption("📌 Column Information")
+
+    for col in unique_columns:
+
+        info = get_column_info(
+            col
+        )
+
+        st.markdown(
+            f"**{col}** → "
+            f"**{info['full_form']}**  \n"
+            f"_{info['meaning']}_"
+        )
+
+
+# =========================================================
+# DISPLAY OLD CHAT
 # =========================================================
 
 for chat in st.session_state.chat_history:
@@ -1649,6 +1811,14 @@ for chat in st.session_state.chat_history:
             chat["content"]
         )
 
+        if chat.get(
+            "columns"
+        ):
+
+            show_column_information(
+                chat["columns"]
+            )
+
 
 # =========================================================
 # CHAT INPUT
@@ -1660,21 +1830,23 @@ question = st.chat_input(
 
 
 # =========================================================
-# QUESTION PROCESSING
+# PROCESS QUESTION
 # =========================================================
 
 if question:
 
-    # -----------------------------------------------------
-    # USER QUESTION
-    # -----------------------------------------------------
+    # =====================================================
+    # USER
+    # =====================================================
 
     st.session_state.chat_history.append({
         "role": "user",
         "content": question
     })
 
-    with st.chat_message("user"):
+    with st.chat_message(
+        "user"
+    ):
 
         st.markdown(
             question
@@ -1682,10 +1854,10 @@ if question:
 
 
     # =====================================================
-    # 1. CSV DIRECT ANSWER
+    # 1. CSV
     # =====================================================
 
-    csv_answer = direct_csv_analysis(
+    csv_answer, columns = direct_csv_analysis(
         question
     )
 
@@ -1693,7 +1865,8 @@ if question:
 
         st.session_state.chat_history.append({
             "role": "assistant",
-            "content": csv_answer
+            "content": csv_answer,
+            "columns": columns
         })
 
         with st.chat_message(
@@ -1704,6 +1877,10 @@ if question:
                 csv_answer
             )
 
+            show_column_information(
+                columns
+            )
+
         st.stop()
 
 
@@ -1711,17 +1888,15 @@ if question:
     # 2. TXT Q&A
     # =====================================================
 
-    qa_result = search_qa_dataset(
+    qa_answer = search_qa_dataset(
         question
     )
 
-    if qa_result:
-
-        answer = qa_result["answer"]
+    if qa_answer:
 
         st.session_state.chat_history.append({
             "role": "assistant",
-            "content": answer
+            "content": qa_answer
         })
 
         with st.chat_message(
@@ -1729,7 +1904,7 @@ if question:
         ):
 
             st.markdown(
-                answer
+                qa_answer
             )
 
         st.stop()
@@ -1762,18 +1937,18 @@ if question:
 
 
     # =====================================================
-    # 4. BUILT-IN KNOWLEDGE
+    # 4. BUILT-IN
     # =====================================================
 
-    builtin_answer = built_in_answer(
+    builtin = built_in_answer(
         question
     )
 
-    if builtin_answer:
+    if builtin:
 
         st.session_state.chat_history.append({
             "role": "assistant",
-            "content": builtin_answer
+            "content": builtin
         })
 
         with st.chat_message(
@@ -1781,14 +1956,14 @@ if question:
         ):
 
             st.markdown(
-                builtin_answer
+                builtin
             )
 
         st.stop()
 
 
     # =====================================================
-    # 5. GEMINI AI
+    # 5. GEMINI
     # =====================================================
 
     csv_context = build_csv_context(
@@ -1807,7 +1982,7 @@ if question:
             "🤔 Thinking..."
         ):
 
-            answer, error = generate_ai_answer(
+            answer = generate_ai_answer(
                 question,
                 csv_context,
                 txt_context
