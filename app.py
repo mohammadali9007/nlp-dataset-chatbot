@@ -47,9 +47,12 @@ if "smart_questions" not in st.session_state:
 if "selected_question" not in st.session_state:
     st.session_state.selected_question = None
 
+if "last_uploaded_names" not in st.session_state:
+    st.session_state.last_uploaded_names = []
+
 
 # =========================================================
-# CUSTOM CSS
+# CSS
 # =========================================================
 
 st.markdown(
@@ -74,32 +77,6 @@ st.markdown(
         margin-bottom: 1.5rem;
     }
 
-    .info-card {
-        padding: 1rem;
-        border-radius: 14px;
-        border: 1px solid rgba(128,128,128,0.2);
-        background: rgba(128,128,128,0.05);
-    }
-
-    .answer-card {
-        padding: 1.2rem;
-        border-radius: 16px;
-        border: 1px solid rgba(128,128,128,0.2);
-        margin-top: 0.5rem;
-    }
-
-    .field-info {
-        font-size: 0.85rem;
-        color: #6b7280;
-        margin-top: 0.4rem;
-    }
-
-    .source-info {
-        font-size: 0.78rem;
-        color: #8b8b8b;
-        margin-top: 0.6rem;
-    }
-
     div[data-testid="stMetric"] {
         border: 1px solid rgba(128,128,128,0.18);
         padding: 12px;
@@ -118,167 +95,201 @@ st.markdown(
 
 COLUMN_INFO = {
 
-    # Diabetes
     "pregnancies": {
         "name": "Pregnancies",
         "meaning": "Number of pregnancies"
     },
+
     "glucose": {
         "name": "Glucose",
         "meaning": "Blood glucose concentration"
     },
+
     "bloodpressure": {
         "name": "Blood Pressure",
-        "meaning": "Diastolic blood pressure"
+        "meaning": "Blood pressure"
     },
+
     "skinthickness": {
         "name": "Skin Thickness",
         "meaning": "Triceps skin fold thickness"
     },
+
     "insulin": {
         "name": "Insulin",
         "meaning": "Serum insulin level"
     },
+
     "bmi": {
         "name": "Body Mass Index",
         "meaning": "Body mass index"
     },
+
     "diabetespedigreefunction": {
         "name": "Diabetes Pedigree Function",
         "meaning": "Diabetes hereditary risk score"
     },
+
     "age": {
         "name": "Age",
         "meaning": "Age of the person"
     },
+
     "outcome": {
         "name": "Outcome",
         "meaning": "Diabetes outcome/class"
     },
 
-    # Kidney
     "id": {
         "name": "ID",
         "meaning": "Record identifier"
     },
+
     "bp": {
         "name": "Blood Pressure",
         "meaning": "Blood pressure"
     },
+
     "sg": {
         "name": "Specific Gravity",
         "meaning": "Urine specific gravity"
     },
+
     "al": {
         "name": "Albumin",
         "meaning": "Albumin level"
     },
+
     "su": {
         "name": "Sugar",
         "meaning": "Urine sugar level"
     },
+
     "rbc": {
         "name": "Red Blood Cells",
         "meaning": "Red blood cell condition"
     },
+
     "pc": {
         "name": "Pus Cell",
         "meaning": "Pus cell condition"
     },
+
     "pcc": {
         "name": "Pus Cell Clumps",
         "meaning": "Presence of pus cell clumps"
     },
+
     "ba": {
         "name": "Bacteria",
         "meaning": "Presence of bacteria"
     },
+
     "bgr": {
         "name": "Blood Glucose Random",
         "meaning": "Random blood glucose"
     },
+
     "bu": {
         "name": "Blood Urea",
         "meaning": "Blood urea level"
     },
+
     "sc": {
         "name": "Serum Creatinine",
         "meaning": "Serum creatinine level"
     },
+
     "sod": {
         "name": "Sodium",
         "meaning": "Blood sodium level"
     },
+
     "pot": {
         "name": "Potassium",
         "meaning": "Blood potassium level"
     },
+
     "hemo": {
         "name": "Hemoglobin",
         "meaning": "Hemoglobin level"
     },
+
     "pcv": {
         "name": "Packed Cell Volume",
         "meaning": "Packed cell volume"
     },
+
     "wc": {
         "name": "White Blood Cell Count",
         "meaning": "White blood cell count"
     },
+
     "rc": {
         "name": "Red Blood Cell Count",
         "meaning": "Red blood cell count"
     },
+
     "htn": {
         "name": "Hypertension",
         "meaning": "Hypertension status"
     },
+
     "dm": {
         "name": "Diabetes Mellitus",
         "meaning": "Diabetes mellitus status"
     },
+
     "cad": {
         "name": "Coronary Artery Disease",
         "meaning": "Coronary artery disease status"
     },
+
     "appet": {
         "name": "Appetite",
         "meaning": "Appetite condition"
     },
+
     "pe": {
         "name": "Pedal Edema",
         "meaning": "Pedal edema status"
     },
+
     "ane": {
         "name": "Anemia",
         "meaning": "Anemia status"
     },
+
     "classification": {
         "name": "Classification",
         "meaning": "Kidney disease classification"
     },
 
-    # General
     "salary": {
         "name": "Salary",
         "meaning": "Salary or income value"
     },
+
     "income": {
         "name": "Income",
         "meaning": "Income value"
     },
+
     "gpa": {
         "name": "GPA",
         "meaning": "Grade Point Average"
     },
+
     "score": {
         "name": "Score",
         "meaning": "Score or numeric result"
     },
+
     "marks": {
         "name": "Marks",
         "meaning": "Academic marks"
     },
+
     "price": {
         "name": "Price",
         "meaning": "Price value"
@@ -296,7 +307,6 @@ COLUMN_ALIASES = {
         "bp",
         "blood pressure",
         "bloodpressure",
-        "blood-pressure",
         "pressure"
     ],
 
@@ -368,10 +378,11 @@ COLUMN_ALIASES = {
 
 
 # =========================================================
-# BASIC HELPERS
+# HELPERS
 # =========================================================
 
 def normalize_text(text):
+
     if text is None:
         return ""
 
@@ -383,6 +394,7 @@ def normalize_text(text):
 
 
 def column_key(column):
+
     return re.sub(
         r"[^a-z0-9]",
         "",
@@ -391,6 +403,7 @@ def column_key(column):
 
 
 def get_column_info(column):
+
     key = column_key(column)
 
     if key in COLUMN_INFO:
@@ -402,34 +415,31 @@ def get_column_info(column):
     }
 
 
-def clean_value(value):
-    if pd.isna(value):
-        return None
-
-    return value
-
-
 # =========================================================
-# READ FILES
+# FILE READERS
 # =========================================================
 
 def read_csv_file(uploaded_file):
 
     try:
+
         uploaded_file.seek(0)
 
-        df = pd.read_csv(uploaded_file)
+        df = pd.read_csv(
+            uploaded_file
+        )
 
         df.columns = [
-            str(col).strip()
-            for col in df.columns
+            str(c).strip()
+            for c in df.columns
         ]
 
         return df
 
-    except Exception as e:
+    except Exception:
 
         try:
+
             uploaded_file.seek(0)
 
             df = pd.read_csv(
@@ -438,19 +448,21 @@ def read_csv_file(uploaded_file):
             )
 
             df.columns = [
-                str(col).strip()
-                for col in df.columns
+                str(c).strip()
+                for c in df.columns
             ]
 
             return df
 
         except Exception:
+
             return None
 
 
 def read_txt_file(uploaded_file):
 
     try:
+
         uploaded_file.seek(0)
 
         return uploaded_file.read().decode(
@@ -459,6 +471,7 @@ def read_txt_file(uploaded_file):
         )
 
     except Exception:
+
         return ""
 
 
@@ -467,9 +480,12 @@ def read_pdf_file(uploaded_file):
     text = ""
 
     try:
+
         uploaded_file.seek(0)
 
-        reader = PdfReader(uploaded_file)
+        reader = PdfReader(
+            uploaded_file
+        )
 
         for page in reader.pages:
 
@@ -489,14 +505,21 @@ def read_docx_file(uploaded_file):
     text = ""
 
     try:
+
         uploaded_file.seek(0)
 
-        document = Document(uploaded_file)
+        document = Document(
+            uploaded_file
+        )
 
         for paragraph in document.paragraphs:
 
             if paragraph.text.strip():
-                text += paragraph.text + "\n"
+
+                text += (
+                    paragraph.text
+                    + "\n"
+                )
 
     except Exception:
         pass
@@ -505,7 +528,7 @@ def read_docx_file(uploaded_file):
 
 
 # =========================================================
-# PROCESS UPLOADED FILES
+# PROCESS FILES
 # =========================================================
 
 def process_uploaded_files(uploaded_files):
@@ -517,37 +540,51 @@ def process_uploaded_files(uploaded_files):
         if file is None:
             continue
 
-        name = getattr(file, "name", "Unknown file")
+        name = getattr(
+            file,
+            "name",
+            "Unknown file"
+        )
 
-        extension = os.path.splitext(name)[1].lower()
+        extension = os.path.splitext(
+            name
+        )[1].lower()
 
         item = {
             "name": name,
             "type": extension,
             "df": None,
             "text": "",
-            "size": getattr(file, "size", 0),
+            "size": getattr(
+                file,
+                "size",
+                0
+            )
         }
 
         if extension == ".csv":
 
-            df = read_csv_file(file)
-
-            if df is not None:
-
-                item["df"] = df
+            item["df"] = read_csv_file(
+                file
+            )
 
         elif extension == ".txt":
 
-            item["text"] = read_txt_file(file)
+            item["text"] = read_txt_file(
+                file
+            )
 
         elif extension == ".pdf":
 
-            item["text"] = read_pdf_file(file)
+            item["text"] = read_pdf_file(
+                file
+            )
 
         elif extension == ".docx":
 
-            item["text"] = read_docx_file(file)
+            item["text"] = read_docx_file(
+                file
+            )
 
         else:
             continue
@@ -558,212 +595,25 @@ def process_uploaded_files(uploaded_files):
 
 
 # =========================================================
-# TXT Q&A DATASET
+# EXACT COLUMN MATCHING
 # =========================================================
 
-def parse_qa_dataset(text):
-
-    pairs = []
-
-    if not text:
-        return pairs
-
-    lines = text.splitlines()
-
-    for line in lines:
-
-        line = line.strip()
-
-        if not line:
-            continue
-
-        if "|" not in line:
-            continue
-
-        question, answer = line.split("|", 1)
-
-        question = question.strip()
-        answer = answer.strip()
-
-        if question and answer:
-
-            pairs.append(
-                {
-                    "question": question,
-                    "answer": answer
-                }
-            )
-
-    return pairs
-
-
-def search_qa_dataset(question, text):
-
-    pairs = parse_qa_dataset(text)
-
-    if not pairs:
-        return None
-
-    q = normalize_text(question)
-
-    # Exact match
-    for item in pairs:
-
-        stored_q = normalize_text(
-            item["question"]
-        )
-
-        if q == stored_q:
-
-            return item["answer"]
-
-    # Similarity matching
-    questions = [
-        normalize_text(item["question"])
-        for item in pairs
-    ]
-
-    if not questions:
-        return None
-
-    try:
-
-        vectorizer = TfidfVectorizer(
-            ngram_range=(1, 2)
-        )
-
-        matrix = vectorizer.fit_transform(
-            questions + [q]
-        )
-
-        scores = cosine_similarity(
-            matrix[-1],
-            matrix[:-1]
-        )[0]
-
-        best_index = int(
-            np.argmax(scores)
-        )
-
-        best_score = float(
-            scores[best_index]
-        )
-
-        if best_score >= 0.45:
-
-            return pairs[best_index]["answer"]
-
-    except Exception:
-        pass
-
-    return None
-
-
-# =========================================================
-# DOCUMENT SEARCH
-# =========================================================
-
-def split_text(text, chunk_size=900):
-
-    if not text:
-        return []
-
-    text = re.sub(
-        r"\s+",
-        " ",
-        text
-    ).strip()
-
-    if not text:
-        return []
-
-    chunks = []
-
-    words = text.split()
-
-    current = []
-
-    current_length = 0
-
-    for word in words:
-
-        current.append(word)
-
-        current_length += len(word) + 1
-
-        if current_length >= chunk_size:
-
-            chunks.append(
-                " ".join(current)
-            )
-
-            current = []
-            current_length = 0
-
-    if current:
-        chunks.append(
-            " ".join(current)
-        )
-
-    return chunks
-
-
-def search_document(question, text):
-
-    chunks = split_text(text)
-
-    if not chunks:
-        return None
-
-    q = normalize_text(question)
-
-    try:
-
-        vectorizer = TfidfVectorizer(
-            stop_words="english",
-            ngram_range=(1, 2)
-        )
-
-        matrix = vectorizer.fit_transform(
-            chunks + [q]
-        )
-
-        scores = cosine_similarity(
-            matrix[-1],
-            matrix[:-1]
-        )[0]
-
-        best_index = int(
-            np.argmax(scores)
-        )
-
-        best_score = float(
-            scores[best_index]
-        )
-
-        if best_score >= 0.10:
-
-            return chunks[best_index]
-
-    except Exception:
-        pass
-
-    return None
-
-
-# =========================================================
-# IMPORTANT:
-# QUESTION → EXACT COLUMN DETECTION
-# =========================================================
-
-def find_relevant_columns(question, df):
+def find_relevant_columns(
+    question,
+    df
+):
 
     if df is None or df.empty:
         return []
 
-    q = normalize_text(question)
+    q = normalize_text(
+        question
+    )
 
-    q_no_space = q.replace(" ", "")
+    q_no_space = q.replace(
+        " ",
+        ""
+    )
 
     q_words = set(
         re.findall(
@@ -772,99 +622,81 @@ def find_relevant_columns(question, df):
         )
     )
 
-    columns = list(df.columns)
-
     exact_matches = []
 
-    # -----------------------------------------------------
-    # STEP 1: EXACT / ALIAS MATCH
-    # -----------------------------------------------------
-
-    for col in columns:
+    for col in df.columns:
 
         key = column_key(col)
 
-        info = get_column_info(col)
-
-        full_name = normalize_text(
-            info["name"]
-        )
-
-        aliases = COLUMN_ALIASES.get(
-            key,
-            []
+        info = get_column_info(
+            col
         )
 
         candidates = [
-            key,
             normalize_text(col),
-            full_name
+            normalize_text(info["name"]),
+            key
         ]
 
         candidates.extend(
-            normalize_text(alias)
-            for alias in aliases
+            normalize_text(x)
+            for x in COLUMN_ALIASES.get(
+                key,
+                []
+            )
         )
 
         found = False
 
         for candidate in candidates:
 
-            candidate_no_space = (
-                candidate.replace(" ", "")
-            )
-
-            if not candidate_no_space:
+            if not candidate:
                 continue
 
-            # Short field names:
-            # bp, age, bmi, sc, etc.
+            candidate_no_space = (
+                candidate.replace(
+                    " ",
+                    ""
+                )
+            )
+
             if len(candidate_no_space) <= 5:
 
                 if candidate in q_words:
+
                     found = True
                     break
-
-                if candidate_no_space in q_no_space:
-
-                    # avoid false matching inside words
-                    if (
-                        len(candidate_no_space) <= 3
-                        or re.search(
-                            rf"\b{re.escape(candidate)}\b",
-                            q
-                        )
-                    ):
-                        found = True
-                        break
 
             else:
 
                 if candidate in q:
+
                     found = True
                     break
 
-                if candidate_no_space in q_no_space:
+                if (
+                    candidate_no_space
+                    in q_no_space
+                ):
+
                     found = True
                     break
 
         if found:
 
-            exact_matches.append(col)
+            exact_matches.append(
+                col
+            )
 
     if exact_matches:
 
         return exact_matches
 
     # -----------------------------------------------------
-    # STEP 2: SAFE FUZZY MATCH
-    #
-    # IMPORTANT:
-    # Do NOT fuzzy match tiny column names like
-    # "age" against "average bp".
+    # SAFE FUZZY MATCH
     # -----------------------------------------------------
 
-    cleaned_question = q
+    cleaned = q
 
     operation_words = [
         "average",
@@ -873,82 +705,85 @@ def find_relevant_columns(question, df):
         "maximum",
         "max",
         "highest",
+        "largest",
         "minimum",
         "min",
         "lowest",
+        "smallest",
         "median",
         "mode",
         "sum",
         "total",
         "count",
         "number",
-        "how many",
         "show",
         "display",
         "give",
         "tell",
         "what is",
         "what are",
+        "all",
+        "every",
         "value",
         "values",
+        "row",
+        "rows",
         "column",
+        "columns",
         "field"
     ]
 
     for word in operation_words:
 
-        cleaned_question = re.sub(
+        cleaned = re.sub(
             rf"\b{re.escape(word)}\b",
             " ",
-            cleaned_question
+            cleaned
         )
 
-    cleaned_question = re.sub(
+    cleaned = re.sub(
         r"\s+",
         " ",
-        cleaned_question
+        cleaned
     ).strip()
 
-    if not cleaned_question:
+    if not cleaned:
         return []
 
     matches = []
 
-    for col in columns:
+    for col in df.columns:
 
         key = column_key(col)
 
-        # Never fuzzy match very short names
+        # Never fuzzy match tiny fields
         if len(key) < 4:
             continue
 
-        info = get_column_info(col)
+        info = get_column_info(
+            col
+        )
 
         names = [
             normalize_text(col),
             normalize_text(info["name"])
         ]
 
-        aliases = COLUMN_ALIASES.get(
-            key,
-            []
-        )
-
         names.extend(
             normalize_text(x)
-            for x in aliases
+            for x in COLUMN_ALIASES.get(
+                key,
+                []
+            )
         )
 
         best_score = 0
 
         for name in names:
 
-            if not name:
-                continue
-
             score = difflib.SequenceMatcher(
                 None,
-                cleaned_question,
+                cleaned,
                 name
             ).ratio()
 
@@ -972,22 +807,412 @@ def find_relevant_columns(question, df):
     )
 
     return [
-        item[0]
-        for item in matches[:2]
+        x[0]
+        for x in matches[:2]
     ]
 
 
 # =========================================================
-# QUESTION TYPE
+# FILE NAME MATCHING
+# =========================================================
+
+def find_requested_file(
+    question,
+    files_data
+):
+
+    q = normalize_text(
+        question
+    )
+
+    q_no_ext = q.replace(
+        ".csv",
+        ""
+    ).replace(
+        ".txt",
+        ""
+    ).replace(
+        ".pdf",
+        ""
+    ).replace(
+        ".docx",
+        ""
+    )
+
+    best_file = None
+    best_score = 0
+
+    for item in files_data:
+
+        if not isinstance(item, dict):
+            continue
+
+        name = normalize_text(
+            item.get(
+                "name",
+                ""
+            )
+        )
+
+        name_no_ext = os.path.splitext(
+            name
+        )[0]
+
+        name_no_ext = normalize_text(
+            name_no_ext
+        )
+
+        if (
+            name in q
+            or name_no_ext in q_no_ext
+        ):
+
+            return item
+
+        score = difflib.SequenceMatcher(
+            None,
+            name_no_ext,
+            q_no_ext
+        ).ratio()
+
+        if score > best_score:
+
+            best_score = score
+            best_file = item
+
+    if best_score >= 0.60:
+
+        return best_file
+
+    return None
+
+
+# =========================================================
+# DATA EXPLORER
+# =========================================================
+
+def explore_dataset(
+    question,
+    files_data
+):
+
+    q = normalize_text(
+        question
+    )
+
+    # -----------------------------------------------------
+    # Detect requested file
+    # -----------------------------------------------------
+
+    requested_file = find_requested_file(
+        question,
+        files_data
+    )
+
+    # -----------------------------------------------------
+    # SELECT CSV DATASETS
+    # -----------------------------------------------------
+
+    csv_items = [
+        item
+        for item in files_data
+        if isinstance(item, dict)
+        and item.get("df") is not None
+    ]
+
+    if requested_file is not None:
+
+        if requested_file.get(
+            "df"
+        ) is not None:
+
+            csv_items = [
+                requested_file
+            ]
+
+    # -----------------------------------------------------
+    # 1. SHOW FIRST N ROWS
+    # -----------------------------------------------------
+
+    first_match = re.search(
+        r"(?:first|top)\s+(\d+)\s+rows?",
+        q
+    )
+
+    if first_match:
+
+        n = int(
+            first_match.group(1)
+        )
+
+        n = max(
+            1,
+            min(n, 1000)
+        )
+
+        if not csv_items:
+            return None
+
+        results = []
+
+        for item in csv_items:
+
+            df = item["df"]
+
+            results.append(
+                {
+                    "title": (
+                        f"First {n} rows — "
+                        f"{item['name']}"
+                    ),
+                    "data": df.head(n),
+                    "source": item["name"]
+                }
+            )
+
+        return {
+            "type": "table",
+            "results": results
+        }
+
+    # -----------------------------------------------------
+    # 2. SHOW LAST N ROWS
+    # -----------------------------------------------------
+
+    last_match = re.search(
+        r"(?:last|bottom)\s+(\d+)\s+rows?",
+        q
+    )
+
+    if last_match:
+
+        n = int(
+            last_match.group(1)
+        )
+
+        n = max(
+            1,
+            min(n, 1000)
+        )
+
+        if not csv_items:
+            return None
+
+        results = []
+
+        for item in csv_items:
+
+            df = item["df"]
+
+            results.append(
+                {
+                    "title": (
+                        f"Last {n} rows — "
+                        f"{item['name']}"
+                    ),
+                    "data": df.tail(n),
+                    "source": item["name"]
+                }
+            )
+
+        return {
+            "type": "table",
+            "results": results
+        }
+
+    # -----------------------------------------------------
+    # 3. SHOW SPECIFIC ROW
+    # -----------------------------------------------------
+
+    row_match = re.search(
+        r"(?:show|display|give|view)?\s*"
+        r"(?:the\s+)?"
+        r"(?:row|record)\s*#?\s*(\d+)",
+        q
+    )
+
+    if row_match:
+
+        row_number = int(
+            row_match.group(1)
+        )
+
+        if row_number <= 0:
+            return None
+
+        if not csv_items:
+            return None
+
+        results = []
+
+        for item in csv_items:
+
+            df = item["df"]
+
+            if row_number > len(df):
+                continue
+
+            row_df = df.iloc[
+                row_number - 1:
+                row_number
+            ]
+
+            results.append(
+                {
+                    "title": (
+                        f"Row {row_number} — "
+                        f"{item['name']}"
+                    ),
+                    "data": row_df,
+                    "source": item["name"]
+                }
+            )
+
+        if results:
+
+            return {
+                "type": "table",
+                "results": results
+            }
+
+    # -----------------------------------------------------
+    # 4. SHOW ALL VALUES OF A COLUMN
+    # -----------------------------------------------------
+
+    value_command = any(
+        phrase in q
+        for phrase in [
+            "show all values",
+            "show every value",
+            "display all values",
+            "display every value",
+            "give all values",
+            "give me all values",
+            "all values of",
+            "all values in",
+            "every value of",
+            "every value in"
+        ]
+    )
+
+    if value_command:
+
+        if not csv_items:
+            return None
+
+        results = []
+
+        for item in csv_items:
+
+            df = item["df"]
+
+            columns = find_relevant_columns(
+                question,
+                df
+            )
+
+            if not columns:
+                continue
+
+            column = columns[0]
+
+            result_df = df[
+                [column]
+            ].copy()
+
+            results.append(
+                {
+                    "title": (
+                        f"All values of "
+                        f"{column} — "
+                        f"{item['name']}"
+                    ),
+                    "data": result_df,
+                    "source": item["name"],
+                    "field": column
+                }
+            )
+
+        if results:
+
+            return {
+                "type": "column",
+                "results": results
+            }
+
+    # -----------------------------------------------------
+    # 5. SHOW ALL COLUMNS OF A ROW
+    # -----------------------------------------------------
+
+    if (
+        "all columns of row" in q
+        or "all column values of row" in q
+        or "complete row" in q
+        or "full row" in q
+    ):
+
+        row_match = re.search(
+            r"row\s*(\d+)",
+            q
+        )
+
+        if row_match:
+
+            row_number = int(
+                row_match.group(1)
+            )
+
+            results = []
+
+            for item in csv_items:
+
+                df = item["df"]
+
+                if (
+                    row_number > 0
+                    and row_number <= len(df)
+                ):
+
+                    row_df = df.iloc[
+                        row_number - 1:
+                        row_number
+                    ]
+
+                    results.append(
+                        {
+                            "title": (
+                                f"Complete row "
+                                f"{row_number} — "
+                                f"{item['name']}"
+                            ),
+                            "data": row_df,
+                            "source": item["name"]
+                        }
+                    )
+
+            if results:
+
+                return {
+                    "type": "table",
+                    "results": results
+                }
+
+    return None
+
+
+# =========================================================
+# DATASET ANALYSIS
 # =========================================================
 
 def detect_operation(question):
 
-    q = normalize_text(question)
+    q = normalize_text(
+        question
+    )
 
     if any(
-        word in q
-        for word in [
+        x in q
+        for x in [
             "average",
             "avg",
             "mean"
@@ -996,8 +1221,8 @@ def detect_operation(question):
         return "average"
 
     if any(
-        word in q
-        for word in [
+        x in q
+        for x in [
             "maximum",
             "max",
             "highest",
@@ -1007,8 +1232,8 @@ def detect_operation(question):
         return "max"
 
     if any(
-        word in q
-        for word in [
+        x in q
+        for x in [
             "minimum",
             "min",
             "lowest",
@@ -1024,8 +1249,8 @@ def detect_operation(question):
         return "mode"
 
     if any(
-        word in q
-        for word in [
+        x in q
+        for x in [
             "sum",
             "total"
         ]
@@ -1033,8 +1258,8 @@ def detect_operation(question):
         return "sum"
 
     if any(
-        word in q
-        for word in [
+        x in q
+        for x in [
             "unique",
             "distinct"
         ]
@@ -1042,8 +1267,8 @@ def detect_operation(question):
         return "unique"
 
     if any(
-        word in q
-        for word in [
+        x in q
+        for x in [
             "missing",
             "null",
             "empty"
@@ -1051,55 +1276,35 @@ def detect_operation(question):
     ):
         return "missing"
 
-    if any(
-        word in q
-        for word in [
-            "type",
-            "datatype",
-            "data type"
-        ]
+    if (
+        "data type" in q
+        or "datatype" in q
+        or "type of" in q
     ):
         return "dtype"
 
-    if any(
-        word in q
-        for word in [
-            "first value",
-            "first"
-        ]
-    ):
+    if "first value" in q:
         return "first"
 
-    if any(
-        word in q
-        for word in [
-            "last value",
-            "last"
-        ]
-    ):
+    if "last value" in q:
         return "last"
 
     return None
 
 
-# =========================================================
-# DIRECT CSV ANALYSIS
-# =========================================================
+def analyze_csv_question(
+    question,
+    df
+):
 
-def analyze_csv_question(question, df):
-
-    if df is None:
+    if df is None or df.empty:
         return None, []
 
-    if df.empty:
-        return "The dataset is empty.", []
+    q = normalize_text(
+        question
+    )
 
-    q = normalize_text(question)
-
-    # -----------------------------------------------------
-    # GENERIC DATASET QUESTIONS
-    # -----------------------------------------------------
-
+    # Generic rows
     if any(
         phrase in q
         for phrase in [
@@ -1111,10 +1316,12 @@ def analyze_csv_question(question, df):
     ):
 
         return (
-            f"The dataset has {len(df):,} rows.",
+            f"The dataset has "
+            f"{len(df):,} rows.",
             []
         )
 
+    # Generic columns
     if any(
         phrase in q
         for phrase in [
@@ -1126,20 +1333,20 @@ def analyze_csv_question(question, df):
     ):
 
         return (
-            f"The dataset has {len(df.columns):,} columns.",
+            f"The dataset has "
+            f"{len(df.columns):,} columns.",
             []
         )
 
     if (
-        "column names" in q
-        or "columns are" in q
+        q == "columns"
+        or "column names" in q
         or "what columns" in q
-        or q == "columns"
+        or "what are the columns" in q
     ):
 
         names = ", ".join(
-            str(col)
-            for col in df.columns
+            map(str, df.columns)
         )
 
         return (
@@ -1147,270 +1354,180 @@ def analyze_csv_question(question, df):
             []
         )
 
-    # -----------------------------------------------------
-    # EXACT FIELD DETECTION
-    # -----------------------------------------------------
-
     columns = find_relevant_columns(
         question,
         df
     )
 
-    # VERY IMPORTANT:
-    # If no column is confidently found,
-    # DO NOT choose a random column.
+    # IMPORTANT:
+    # No random field selection
     if not columns:
         return None, []
 
     column = columns[0]
 
-    operation = detect_operation(question)
+    operation = detect_operation(
+        question
+    )
 
     series = df[column]
 
-    numeric_series = pd.to_numeric(
+    numeric = pd.to_numeric(
         series,
         errors="coerce"
+    ).dropna()
+
+    info = get_column_info(
+        column
     )
-
-    numeric_values = numeric_series.dropna()
-
-    info = get_column_info(column)
-
-    # -----------------------------------------------------
-    # AVERAGE
-    # -----------------------------------------------------
 
     if operation == "average":
 
-        if numeric_values.empty:
-
+        if numeric.empty:
             return (
-                f"I couldn't calculate the average of "
-                f"{info['name']} because it is not numeric.",
+                f"{info['name']} is not numeric.",
                 [column]
             )
 
-        value = numeric_values.mean()
-
         return (
-            f"The average {info['name']} is "
-            f"{value:.2f}.",
+            f"The average "
+            f"{info['name']} is "
+            f"{numeric.mean():.2f}.",
             [column]
         )
-
-    # -----------------------------------------------------
-    # MAX
-    # -----------------------------------------------------
 
     if operation == "max":
 
-        if numeric_values.empty:
-
+        if numeric.empty:
             return (
-                f"I couldn't calculate the maximum of "
-                f"{info['name']} because it is not numeric.",
+                f"{info['name']} is not numeric.",
                 [column]
             )
 
-        value = numeric_values.max()
-
         return (
-            f"The maximum {info['name']} is "
-            f"{value:g}.",
+            f"The maximum "
+            f"{info['name']} is "
+            f"{numeric.max():g}.",
             [column]
         )
-
-    # -----------------------------------------------------
-    # MIN
-    # -----------------------------------------------------
 
     if operation == "min":
 
-        if numeric_values.empty:
-
+        if numeric.empty:
             return (
-                f"I couldn't calculate the minimum of "
-                f"{info['name']} because it is not numeric.",
+                f"{info['name']} is not numeric.",
                 [column]
             )
 
-        value = numeric_values.min()
-
         return (
-            f"The minimum {info['name']} is "
-            f"{value:g}.",
+            f"The minimum "
+            f"{info['name']} is "
+            f"{numeric.min():g}.",
             [column]
         )
-
-    # -----------------------------------------------------
-    # MEDIAN
-    # -----------------------------------------------------
 
     if operation == "median":
 
-        if numeric_values.empty:
-
+        if numeric.empty:
             return (
-                f"I couldn't calculate the median of "
-                f"{info['name']} because it is not numeric.",
+                f"{info['name']} is not numeric.",
                 [column]
             )
 
-        value = numeric_values.median()
-
         return (
-            f"The median {info['name']} is "
-            f"{value:.2f}.",
+            f"The median "
+            f"{info['name']} is "
+            f"{numeric.median():.2f}.",
             [column]
         )
-
-    # -----------------------------------------------------
-    # MODE
-    # -----------------------------------------------------
-
-    if operation == "mode":
-
-        modes = series.dropna().mode()
-
-        if modes.empty:
-
-            return (
-                f"No mode is available for "
-                f"{info['name']}.",
-                [column]
-            )
-
-        values = [
-            str(x)
-            for x in modes.tolist()
-        ]
-
-        return (
-            f"The mode of {info['name']} is "
-            f"{', '.join(values)}.",
-            [column]
-        )
-
-    # -----------------------------------------------------
-    # SUM
-    # -----------------------------------------------------
 
     if operation == "sum":
 
-        if numeric_values.empty:
-
+        if numeric.empty:
             return (
-                f"I couldn't calculate the total of "
-                f"{info['name']} because it is not numeric.",
+                f"{info['name']} is not numeric.",
                 [column]
             )
 
-        value = numeric_values.sum()
-
         return (
-            f"The total {info['name']} is "
-            f"{value:g}.",
+            f"The total "
+            f"{info['name']} is "
+            f"{numeric.sum():g}.",
             [column]
         )
-
-    # -----------------------------------------------------
-    # UNIQUE
-    # -----------------------------------------------------
 
     if operation == "unique":
 
-        count = series.nunique(
-            dropna=True
-        )
-
         return (
             f"{info['name']} has "
-            f"{count:,} unique values.",
+            f"{series.nunique(dropna=True):,} "
+            f"unique values.",
             [column]
         )
-
-    # -----------------------------------------------------
-    # MISSING
-    # -----------------------------------------------------
 
     if operation == "missing":
 
-        count = int(
-            series.isna().sum()
-        )
-
         return (
             f"{info['name']} has "
-            f"{count:,} missing values.",
+            f"{int(series.isna().sum()):,} "
+            f"missing values.",
             [column]
         )
-
-    # -----------------------------------------------------
-    # DATA TYPE
-    # -----------------------------------------------------
 
     if operation == "dtype":
 
         return (
-            f"The data type of {info['name']} "
-            f"is {series.dtype}.",
+            f"The data type of "
+            f"{info['name']} is "
+            f"{series.dtype}.",
             [column]
         )
-
-    # -----------------------------------------------------
-    # FIRST
-    # -----------------------------------------------------
 
     if operation == "first":
 
         values = series.dropna()
 
         if values.empty:
-
             return (
-                f"There is no available value for "
+                f"No value is available for "
                 f"{info['name']}.",
                 [column]
             )
 
         return (
-            f"The first available {info['name']} "
-            f"value is {values.iloc[0]}.",
+            f"The first "
+            f"{info['name']} value is "
+            f"{values.iloc[0]}.",
             [column]
         )
-
-    # -----------------------------------------------------
-    # LAST
-    # -----------------------------------------------------
 
     if operation == "last":
 
         values = series.dropna()
 
         if values.empty:
-
             return (
-                f"There is no available value for "
+                f"No value is available for "
                 f"{info['name']}.",
                 [column]
             )
 
         return (
-            f"The last available {info['name']} "
-            f"value is {values.iloc[-1]}.",
+            f"The last "
+            f"{info['name']} value is "
+            f"{values.iloc[-1]}.",
             [column]
         )
 
-    # -----------------------------------------------------
-    # "WHAT IS BP?"
-    # -----------------------------------------------------
-
-    if (
-        q.startswith("what is")
-        or q.startswith("what are")
-        or q.startswith("tell me about")
-        or q.startswith("explain")
+    # "what is bp"
+    if any(
+        x in q
+        for x in [
+            "what is",
+            "what are",
+            "tell me about",
+            "explain"
+        ]
     ):
 
         return (
@@ -1423,74 +1540,277 @@ def analyze_csv_question(question, df):
 
 
 # =========================================================
-# GENERAL BUILT-IN ANSWERS
+# TXT Q&A
+# =========================================================
+
+def parse_qa_dataset(text):
+
+    pairs = []
+
+    if not text:
+        return pairs
+
+    for line in text.splitlines():
+
+        line = line.strip()
+
+        if "|" not in line:
+            continue
+
+        question, answer = line.split(
+            "|",
+            1
+        )
+
+        question = question.strip()
+        answer = answer.strip()
+
+        if question and answer:
+
+            pairs.append(
+                {
+                    "question": question,
+                    "answer": answer
+                }
+            )
+
+    return pairs
+
+
+def search_qa_dataset(
+    question,
+    text
+):
+
+    pairs = parse_qa_dataset(
+        text
+    )
+
+    if not pairs:
+        return None
+
+    q = normalize_text(
+        question
+    )
+
+    # Exact
+    for item in pairs:
+
+        if q == normalize_text(
+            item["question"]
+        ):
+
+            return item["answer"]
+
+    # Fuzzy TF-IDF
+    try:
+
+        questions = [
+            normalize_text(
+                x["question"]
+            )
+            for x in pairs
+        ]
+
+        vectorizer = TfidfVectorizer(
+            ngram_range=(1, 2)
+        )
+
+        matrix = vectorizer.fit_transform(
+            questions + [q]
+        )
+
+        scores = cosine_similarity(
+            matrix[-1],
+            matrix[:-1]
+        )[0]
+
+        index = int(
+            np.argmax(scores)
+        )
+
+        score = float(
+            scores[index]
+        )
+
+        if score >= 0.45:
+
+            return pairs[index][
+                "answer"
+            ]
+
+    except Exception:
+        pass
+
+    return None
+
+
+# =========================================================
+# DOCUMENT SEARCH
+# =========================================================
+
+def split_text(
+    text,
+    chunk_size=900
+):
+
+    if not text:
+        return []
+
+    text = re.sub(
+        r"\s+",
+        " ",
+        text
+    ).strip()
+
+    words = text.split()
+
+    chunks = []
+
+    current = []
+    length = 0
+
+    for word in words:
+
+        current.append(word)
+
+        length += len(word) + 1
+
+        if length >= chunk_size:
+
+            chunks.append(
+                " ".join(current)
+            )
+
+            current = []
+            length = 0
+
+    if current:
+
+        chunks.append(
+            " ".join(current)
+        )
+
+    return chunks
+
+
+def search_document(
+    question,
+    text
+):
+
+    chunks = split_text(
+        text
+    )
+
+    if not chunks:
+        return None
+
+    q = normalize_text(
+        question
+    )
+
+    try:
+
+        vectorizer = TfidfVectorizer(
+            stop_words="english",
+            ngram_range=(1, 2)
+        )
+
+        matrix = vectorizer.fit_transform(
+            chunks + [q]
+        )
+
+        scores = cosine_similarity(
+            matrix[-1],
+            matrix[:-1]
+        )[0]
+
+        index = int(
+            np.argmax(scores)
+        )
+
+        if scores[index] >= 0.10:
+
+            return chunks[index]
+
+    except Exception:
+        pass
+
+    return None
+
+
+# =========================================================
+# GENERAL ANSWERS
 # =========================================================
 
 GENERAL_ANSWERS = {
 
     "what is python":
-        "Python is a high-level programming language known for its simple syntax and wide use in AI, data science, web development, and automation.",
+        "Python is a high-level programming language widely used in AI, data science, web development, and automation.",
 
     "what is ai":
         "Artificial Intelligence (AI) is the field of computer science focused on creating systems that can perform tasks that normally require human intelligence.",
 
     "what is artificial intelligence":
-        "Artificial Intelligence (AI) is the field of computer science focused on building systems that can learn, reason, understand information, and perform intelligent tasks.",
+        "Artificial Intelligence is the field of computer science focused on building systems that can learn, reason, understand information, and perform intelligent tasks.",
 
     "what is ml":
-        "Machine Learning (ML) is a branch of AI where computers learn patterns from data and use those patterns to make predictions or decisions.",
+        "Machine Learning is a branch of AI where computers learn patterns from data and use those patterns to make predictions or decisions.",
 
     "what is machine learning":
-        "Machine Learning is a branch of AI that allows computers to learn patterns from data without being explicitly programmed for every task.",
+        "Machine Learning allows computers to learn patterns from data without being explicitly programmed for every task.",
 
     "what is dl":
-        "Deep Learning is a part of Machine Learning that uses multi-layer neural networks to learn complex patterns from large amounts of data.",
+        "Deep Learning is a part of Machine Learning that uses multi-layer neural networks to learn complex patterns.",
 
     "what is deep learning":
-        "Deep Learning is a Machine Learning technique that uses neural networks with multiple layers to learn complex patterns.",
+        "Deep Learning uses neural networks with multiple layers to learn complex patterns from data.",
 
     "what is nlp":
-        "Natural Language Processing (NLP) is a field of AI that helps computers understand, process, and generate human language.",
+        "Natural Language Processing is a field of AI that helps computers understand, process, and generate human language.",
 
     "what is natural language processing":
-        "Natural Language Processing (NLP) is a field of AI that enables computers to work with human language, such as text and speech.",
+        "NLP enables computers to work with human language, including text and speech.",
 
     "what is computer vision":
-        "Computer Vision is a field of AI that enables computers to understand and analyze images and videos.",
+        "Computer Vision enables computers to understand and analyze images and videos.",
 
     "what is csv":
-        "CSV stands for Comma-Separated Values. It is a simple file format commonly used to store tabular data.",
+        "CSV stands for Comma-Separated Values. It is a common format for storing tabular data.",
 
     "what is pandas":
-        "Pandas is a Python library used for data manipulation and analysis. Its main structures are DataFrame and Series.",
+        "Pandas is a Python library used for data manipulation and analysis.",
 
     "what is streamlit":
-        "Streamlit is a Python framework that makes it easy to build interactive data and AI web applications.",
+        "Streamlit is a Python framework for building interactive data and AI web applications.",
 
     "what is chatbot":
-        "A chatbot is a software application that communicates with users through text or voice and provides automated responses.",
+        "A chatbot is software that communicates with users through text or voice and provides automated responses.",
 
     "what is rag":
         "RAG stands for Retrieval-Augmented Generation. It retrieves relevant information from a knowledge source and uses it to generate an answer.",
 
     "what is llm":
-        "LLM stands for Large Language Model. It is an AI model trained on large amounts of text to understand and generate human-like language."
+        "LLM stands for Large Language Model. It is an AI model trained on large amounts of text to understand and generate language."
 }
 
 
-def get_general_answer(question):
+def get_general_answer(
+    question
+):
 
-    q = normalize_text(question)
+    q = normalize_text(
+        question
+    )
 
     if q in GENERAL_ANSWERS:
-        return GENERAL_ANSWERS[q]
 
-    # small typo tolerance
-    keys = list(GENERAL_ANSWERS.keys())
+        return GENERAL_ANSWERS[q]
 
     matches = difflib.get_close_matches(
         q,
-        keys,
+        list(GENERAL_ANSWERS.keys()),
         n=1,
         cutoff=0.82
     )
@@ -1516,9 +1836,11 @@ def get_gemini_client():
     api_key = None
 
     try:
+
         api_key = st.secrets.get(
             "GEMINI_API_KEY"
         )
+
     except Exception:
         pass
 
@@ -1538,6 +1860,7 @@ def get_gemini_client():
         )
 
     except Exception:
+
         return None
 
 
@@ -1552,23 +1875,22 @@ def generate_ai_answer(
         return None
 
     prompt = f"""
-You are IntelliMind AI, a professional multi-file data assistant.
+You are IntelliMind AI.
 
 Answer the user's question clearly and accurately.
 
-IMPORTANT:
-- Use the supplied context when it is relevant.
-- Do not invent dataset values.
-- If the context does not contain the answer, say that clearly.
+Rules:
+- Use the provided context when relevant.
+- Never invent dataset values.
+- Never calculate numerical dataset answers yourself if the data context is insufficient.
 - Keep the answer concise.
 - Do not show internal reasoning.
-- Do not mention retrieval, TF-IDF, cosine similarity, chunks, embeddings,
-  or internal processing.
+- Do not mention TF-IDF, embeddings, retrieval, chunks, or internal processing.
 
 User question:
 {question}
 
-Available context:
+Context:
 {context}
 """
 
@@ -1584,18 +1906,21 @@ Available context:
             return response.text.strip()
 
     except Exception:
+
         return None
 
     return None
 
 
 # =========================================================
-# BUILD FILE CONTEXT
+# BUILD CONTEXT
 # =========================================================
 
-def build_file_context(files_data):
+def build_file_context(
+    files_data
+):
 
-    context_parts = []
+    parts = []
 
     for item in files_data:
 
@@ -1607,7 +1932,9 @@ def build_file_context(files_data):
             "Unknown"
         )
 
-        df = item.get("df")
+        df = item.get(
+            "df"
+        )
 
         text = item.get(
             "text",
@@ -1616,7 +1943,7 @@ def build_file_context(files_data):
 
         if df is not None:
 
-            context_parts.append(
+            parts.append(
                 f"""
 FILE: {name}
 
@@ -1630,24 +1957,22 @@ Rows:
 
         elif text:
 
-            preview = text[:5000]
-
-            context_parts.append(
+            parts.append(
                 f"""
 FILE: {name}
 
 CONTENT:
-{preview}
+{text[:5000]}
 """
             )
 
     return "\n".join(
-        context_parts
+        parts
     )
 
 
 # =========================================================
-# PROCESS QUESTION
+# MAIN QUESTION PROCESSOR
 # =========================================================
 
 def process_question(
@@ -1658,30 +1983,52 @@ def process_question(
     question = question.strip()
 
     if not question:
+
         return {
             "answer": "Please enter a question.",
             "fields": [],
-            "sources": []
+            "sources": [],
+            "table_results": []
         }
 
     # -----------------------------------------------------
-    # 1. GENERAL BUILT-IN KNOWLEDGE
+    # 1. DATA EXPLORER
     # -----------------------------------------------------
 
-    general_answer = get_general_answer(
+    explorer_result = explore_dataset(
+        question,
+        files_data
+    )
+
+    if explorer_result:
+
+        return {
+            "answer": "",
+            "fields": [],
+            "sources": [],
+            "table_results":
+                explorer_result["results"]
+        }
+
+    # -----------------------------------------------------
+    # 2. GENERAL KNOWLEDGE
+    # -----------------------------------------------------
+
+    general = get_general_answer(
         question
     )
 
-    if general_answer:
+    if general:
 
         return {
-            "answer": general_answer,
+            "answer": general,
             "fields": [],
-            "sources": []
+            "sources": [],
+            "table_results": []
         }
 
     # -----------------------------------------------------
-    # 2. DIRECT CSV ANALYSIS
+    # 3. DIRECT CSV ANALYSIS
     # -----------------------------------------------------
 
     csv_answers = []
@@ -1691,14 +2038,18 @@ def process_question(
         if not isinstance(item, dict):
             continue
 
-        df = item.get("df")
+        df = item.get(
+            "df"
+        )
 
         if df is None:
             continue
 
-        answer, fields = analyze_csv_question(
-            question,
-            df
+        answer, fields = (
+            analyze_csv_question(
+                question,
+                df
+            )
         )
 
         if answer:
@@ -1714,13 +2065,10 @@ def process_question(
                 }
             )
 
-    # If a field-specific CSV answer exists,
-    # return ONLY relevant datasets.
     if csv_answers:
 
         answers = []
-
-        all_fields = []
+        fields = []
         sources = []
 
         for item in csv_answers:
@@ -1729,7 +2077,7 @@ def process_question(
                 item["answer"]
             )
 
-            all_fields.extend(
+            fields.extend(
                 item["fields"]
             )
 
@@ -1737,24 +2085,25 @@ def process_question(
                 item["source"]
             )
 
-        # Remove duplicate fields
-        all_fields = list(
-            dict.fromkeys(all_fields)
-        )
-
-        # Remove duplicate sources
-        sources = list(
-            dict.fromkeys(sources)
-        )
-
         return {
-            "answer": "\n\n".join(answers),
-            "fields": all_fields,
-            "sources": sources
+            "answer": "\n\n".join(
+                answers
+            ),
+            "fields": list(
+                dict.fromkeys(
+                    fields
+                )
+            ),
+            "sources": list(
+                dict.fromkeys(
+                    sources
+                )
+            ),
+            "table_results": []
         }
 
     # -----------------------------------------------------
-    # 3. TXT Q&A
+    # 4. TXT Q&A
     # -----------------------------------------------------
 
     for item in files_data:
@@ -1762,90 +2111,86 @@ def process_question(
         if not isinstance(item, dict):
             continue
 
+        if item.get(
+            "type"
+        ) != ".txt":
+
+            continue
+
         text = item.get(
             "text",
             ""
         )
 
-        file_type = item.get(
-            "type",
+        if "|" not in text:
+            continue
+
+        answer = search_qa_dataset(
+            question,
+            text
+        )
+
+        if answer:
+
+            return {
+                "answer": answer,
+                "fields": [],
+                "sources": [
+                    item.get(
+                        "name",
+                        "TXT"
+                    )
+                ],
+                "table_results": []
+            }
+
+    # -----------------------------------------------------
+    # 5. PDF / DOCX
+    # -----------------------------------------------------
+
+    document_results = []
+
+    for item in files_data:
+
+        if not isinstance(item, dict):
+            continue
+
+        if item.get(
+            "type"
+        ) not in [
+            ".pdf",
+            ".docx"
+        ]:
+
+            continue
+
+        text = item.get(
+            "text",
             ""
         )
 
-        if (
-            file_type == ".txt"
-            and "|" in text
-        ):
+        result = search_document(
+            question,
+            text
+        )
 
-            answer = search_qa_dataset(
-                question,
-                text
-            )
+        if result:
 
-            if answer:
-
-                return {
-                    "answer": answer,
-                    "fields": [],
-                    "sources": [
-                        item.get(
-                            "name",
-                            "TXT"
-                        )
-                    ]
+            document_results.append(
+                {
+                    "source": item.get(
+                        "name",
+                        "Document"
+                    ),
+                    "text": result
                 }
-
-    # -----------------------------------------------------
-    # 4. DOCUMENT SEARCH
-    # -----------------------------------------------------
-
-    document_answers = []
-
-    for item in files_data:
-
-        if not isinstance(item, dict):
-            continue
-
-        text = item.get(
-            "text",
-            ""
-        )
-
-        file_type = item.get(
-            "type",
-            ""
-        )
-
-        if (
-            file_type in [
-                ".pdf",
-                ".docx"
-            ]
-            and text
-        ):
-
-            result = search_document(
-                question,
-                text
             )
 
-            if result:
-
-                document_answers.append(
-                    {
-                        "source": item.get(
-                            "name",
-                            "Document"
-                        ),
-                        "text": result
-                    }
-                )
-
-    if document_answers:
+    if document_results:
 
         context = "\n\n".join(
             f"Source: {x['source']}\n{x['text']}"
-            for x in document_answers
+            for x in document_results
         )
 
         ai_answer = generate_ai_answer(
@@ -1860,22 +2205,23 @@ def process_question(
                 "fields": [],
                 "sources": [
                     x["source"]
-                    for x in document_answers
-                ]
+                    for x in document_results
+                ],
+                "table_results": []
             }
 
-        # Gemini unavailable:
         return {
-            "answer": document_answers[0]["text"],
+            "answer": document_results[0]["text"],
             "fields": [],
             "sources": [
                 x["source"]
-                for x in document_answers
-            ]
+                for x in document_results
+            ],
+            "table_results": []
         }
 
     # -----------------------------------------------------
-    # 5. GENERAL GEMINI ANSWER
+    # 6. GEMINI FALLBACK
     # -----------------------------------------------------
 
     context = build_file_context(
@@ -1892,52 +2238,51 @@ def process_question(
         return {
             "answer": ai_answer,
             "fields": [],
-            "sources": []
+            "sources": [],
+            "table_results": []
         }
 
     # -----------------------------------------------------
-    # 6. FINAL FALLBACK
+    # 7. FINAL FALLBACK
     # -----------------------------------------------------
 
     return {
         "answer": (
-            "I couldn't find a reliable answer in the "
-            "uploaded files. Try asking about a specific "
-            "field, value, document topic, or dataset."
+            "I couldn't find a reliable answer. "
+            "Try asking about a specific field, "
+            "row, column, document topic, or dataset."
         ),
         "fields": [],
-        "sources": []
+        "sources": [],
+        "table_results": []
     }
 
 
 # =========================================================
-# DYNAMIC SMART QUESTIONS
+# SMART QUESTIONS
 # =========================================================
 
-def generate_smart_questions(files_data):
+def generate_smart_questions(
+    files_data
+):
 
     questions = []
-
-    # -----------------------------------------------------
-    # CSV BASED QUESTIONS
-    # -----------------------------------------------------
 
     for item in files_data:
 
         if not isinstance(item, dict):
             continue
 
-        df = item.get("df")
+        df = item.get(
+            "df"
+        )
 
         if df is None or df.empty:
             continue
 
-        columns = list(df.columns)
-
-        # numeric fields
         numeric_columns = []
 
-        for col in columns:
+        for col in df.columns:
 
             numeric = pd.to_numeric(
                 df[col],
@@ -1950,19 +2295,21 @@ def generate_smart_questions(files_data):
                     col
                 )
 
-        # create average suggestions
         for col in numeric_columns[:5]:
 
-            info = get_column_info(col)
+            info = get_column_info(
+                col
+            )
 
             questions.append(
                 f"What is the average {info['name']}?"
             )
 
-        # max / min
         for col in numeric_columns[:2]:
 
-            info = get_column_info(col)
+            info = get_column_info(
+                col
+            )
 
             questions.append(
                 f"What is the maximum {info['name']}?"
@@ -1972,49 +2319,24 @@ def generate_smart_questions(files_data):
                 f"What is the minimum {info['name']}?"
             )
 
-        # rows
         questions.append(
-            f"How many rows are in {item.get('name', 'this dataset')}?"
+            f"Show first 5 rows of {item['name']}"
         )
 
         questions.append(
-            f"What columns are in {item.get('name', 'this dataset')}?"
+            f"Show all values of {numeric_columns[0]}"
+            if numeric_columns
+            else f"What columns are in {item['name']}?"
         )
-
-        # categorical columns
-        categorical = []
-
-        for col in columns:
-
-            if col not in numeric_columns:
-
-                categorical.append(
-                    col
-                )
-
-        for col in categorical[:2]:
-
-            info = get_column_info(col)
-
-            questions.append(
-                f"How many unique {info['name']} values are there?"
-            )
-
-    # -----------------------------------------------------
-    # DOCUMENT QUESTIONS
-    # -----------------------------------------------------
 
     for item in files_data:
 
         if not isinstance(item, dict):
             continue
 
-        file_type = item.get(
-            "type",
-            ""
-        )
-
-        if file_type in [
+        if item.get(
+            "type"
+        ) in [
             ".txt",
             ".pdf",
             ".docx"
@@ -2029,18 +2351,11 @@ def generate_smart_questions(files_data):
                 f"Summarize {name}"
             )
 
-            questions.append(
-                f"What information is available in {name}?"
-            )
-
-    # Remove duplicates
-    unique_questions = list(
+    return list(
         dict.fromkeys(
             questions
         )
-    )
-
-    return unique_questions[:12]
+    )[:12]
 
 
 # =========================================================
@@ -2082,12 +2397,10 @@ with st.sidebar:
             for file in uploaded_files
         ]
 
-        old_names = st.session_state.get(
-            "last_uploaded_names",
-            []
-        )
-
-        if names != old_names:
+        if (
+            names
+            != st.session_state.last_uploaded_names
+        ):
 
             st.session_state.files_data = (
                 process_uploaded_files(
@@ -2111,10 +2424,6 @@ with st.sidebar:
 
     st.divider()
 
-    # -----------------------------------------------------
-    # FILE LIST
-    # -----------------------------------------------------
-
     st.markdown(
         "### 📁 Files"
     )
@@ -2127,21 +2436,14 @@ with st.sidebar:
 
     else:
 
-        for index, item in enumerate(
-            files_data
-        ):
+        for item in files_data:
 
             if not isinstance(item, dict):
                 continue
 
-            file_name = item.get(
+            name = item.get(
                 "name",
-                "Unknown file"
-            )
-
-            file_type = item.get(
-                "type",
-                ""
+                "Unknown"
             )
 
             df = item.get(
@@ -2149,8 +2451,7 @@ with st.sidebar:
             )
 
             with st.expander(
-                f"📄 {file_name}",
-                expanded=False
+                f"📄 {name}"
             ):
 
                 if df is not None:
@@ -2171,16 +2472,11 @@ with st.sidebar:
                         )
 
                         st.markdown(
-                            f"**`{col}`**"
-                        )
-
-                        st.caption(
-                            f"Full name: {info['name']}"
+                            f"`{col}` → {info['name']}"
                         )
 
                         with st.expander(
-                            "Meaning",
-                            expanded=False
+                            "Meaning"
                         ):
 
                             st.caption(
@@ -2200,85 +2496,45 @@ with st.sidebar:
 
     st.divider()
 
-    # -----------------------------------------------------
-    # FIELD DICTIONARY
-    # -----------------------------------------------------
-
     st.markdown(
         "### 📚 Fields"
     )
 
-    displayed_fields = []
+    shown = set()
 
     for item in files_data:
 
         if not isinstance(item, dict):
             continue
 
-        df = item.get("df")
+        df = item.get(
+            "df"
+        )
 
-        if df is not None:
+        if df is None:
+            continue
 
-            for col in df.columns:
+        for col in df.columns:
 
-                key = column_key(col)
+            key = column_key(
+                col
+            )
 
-                if key in displayed_fields:
-                    continue
+            if key in shown:
+                continue
 
-                displayed_fields.append(
-                    key
-                )
+            shown.add(key)
 
-                info = get_column_info(
-                    col
-                )
+            info = get_column_info(
+                col
+            )
 
-                st.markdown(
-                    f"`{col}` → {info['name']}"
-                )
+            st.markdown(
+                f"`{col}` → {info['name']}"
+            )
 
-                if len(displayed_fields) >= 8:
-                    break
-
-    if len(displayed_fields) > 0:
-
-        with st.expander(
-            "View all fields"
-        ):
-
-            already = set()
-
-            for item in files_data:
-
-                if not isinstance(item, dict):
-                    continue
-
-                df = item.get("df")
-
-                if df is None:
-                    continue
-
-                for col in df.columns:
-
-                    key = column_key(col)
-
-                    if key in already:
-                        continue
-
-                    already.add(key)
-
-                    info = get_column_info(
-                        col
-                    )
-
-                    st.markdown(
-                        f"`{col}` → {info['name']}"
-                    )
-
-                    st.caption(
-                        info["meaning"]
-                    )
+            if len(shown) >= 8:
+                break
 
 
 # =========================================================
@@ -2305,44 +2561,44 @@ st.markdown(
 if not files_data:
 
     st.info(
-        "👈 Upload CSV, TXT, PDF or DOCX files from the sidebar to get started."
+        "👈 Upload CSV, TXT, PDF or DOCX files to get started."
     )
 
-    col1, col2, col3 = st.columns(3)
+    c1, c2, c3 = st.columns(3)
 
-    with col1:
+    with c1:
 
         st.markdown(
-            "### 📊 Analyze Data"
+            "### 📊 Data Analysis"
         )
 
         st.caption(
-            "Ask about averages, maximums, minimums, rows, columns and more."
+            "Analyze columns, values, rows and statistics."
         )
 
-    with col2:
+    with c2:
 
         st.markdown(
-            "### 📄 Understand Files"
+            "### 📄 Documents"
         )
 
         st.caption(
-            "Search and summarize TXT, PDF and DOCX documents."
+            "Ask questions from TXT, PDF and DOCX files."
         )
 
-    with col3:
+    with c3:
 
         st.markdown(
-            "### 🧠 Ask Naturally"
+            "### 🧠 AI Assistant"
         )
 
         st.caption(
-            "Ask questions using normal language."
+            "Ask questions naturally."
         )
 
 
 # =========================================================
-# DATASET OVERVIEW
+# OVERVIEW
 # =========================================================
 
 else:
@@ -2351,20 +2607,20 @@ else:
         files_data
     )
 
-    csv_files = sum(
-        1
-        for item in files_data
-        if isinstance(item, dict)
-        and item.get("df") is not None
+    datasets = [
+        x
+        for x in files_data
+        if isinstance(x, dict)
+        and x.get("df") is not None
+    ]
+
+    documents = total_files - len(
+        datasets
     )
 
-    document_files = total_files - csv_files
-
     total_rows = sum(
-        len(item["df"])
-        for item in files_data
-        if isinstance(item, dict)
-        and item.get("df") is not None
+        len(x["df"])
+        for x in datasets
     )
 
     c1, c2, c3, c4 = st.columns(4)
@@ -2378,13 +2634,13 @@ else:
     with c2:
         st.metric(
             "Datasets",
-            csv_files
+            len(datasets)
         )
 
     with c3:
         st.metric(
             "Documents",
-            document_files
+            documents
         )
 
     with c4:
@@ -2406,25 +2662,19 @@ if files_data:
         "### ✨ Smart Questions"
     )
 
-    if not st.session_state.smart_questions:
-
-        st.caption(
-            "Upload a dataset to generate questions automatically."
-        )
-
-    else:
+    if st.session_state.smart_questions:
 
         cols = st.columns(3)
 
-        for index, question in enumerate(
+        for i, question in enumerate(
             st.session_state.smart_questions
         ):
 
-            with cols[index % 3]:
+            with cols[i % 3]:
 
                 if st.button(
                     question,
-                    key=f"smart_{index}",
+                    key=f"smart_{i}",
                     use_container_width=True
                 ):
 
@@ -2439,86 +2689,114 @@ if files_data:
 # CHAT HISTORY
 # =========================================================
 
-if st.session_state.chat_history:
+for message in st.session_state.chat_history:
 
-    st.markdown(
-        "### 💬 Conversation"
+    role = message.get(
+        "role",
+        "assistant"
     )
 
-    for message in st.session_state.chat_history:
+    content = message.get(
+        "content",
+        ""
+    )
 
-        role = message.get(
-            "role",
+    if role == "user":
+
+        with st.chat_message(
+            "user"
+        ):
+
+            st.write(
+                content
+            )
+
+    else:
+
+        with st.chat_message(
             "assistant"
-        )
+        ):
 
-        content = message.get(
-            "content",
-            ""
-        )
+            if content:
 
-        if role == "user":
-
-            with st.chat_message(
-                "user"
-            ):
-
-                st.write(content)
-
-        else:
-
-            with st.chat_message(
-                "assistant"
-            ):
-
-                st.write(content)
-
-                fields = message.get(
-                    "fields",
-                    []
+                st.write(
+                    content
                 )
 
-                sources = message.get(
-                    "sources",
-                    []
-                )
+            fields = message.get(
+                "fields",
+                []
+            )
 
-                if fields:
+            sources = message.get(
+                "sources",
+                []
+            )
 
-                    field_text = []
+            tables = message.get(
+                "table_results",
+                []
+            )
 
-                    for field in fields:
+            if fields:
 
-                        info = get_column_info(
-                            field
-                        )
+                field_text = []
 
-                        field_text.append(
-                            f"`{field}` → {info['name']}"
-                        )
+                for field in fields:
 
-                    st.caption(
-                        " • ".join(
-                            field_text
-                        )
+                    info = get_column_info(
+                        field
                     )
 
-                if sources:
+                    field_text.append(
+                        f"`{field}` → {info['name']}"
+                    )
 
-                    st.caption(
-                        "Source: "
-                        + ", ".join(
-                            sources
-                        )
+                st.caption(
+                    " • ".join(
+                        field_text
+                    )
+                )
+
+            if sources:
+
+                st.caption(
+                    "Source: "
+                    + ", ".join(
+                        sources
+                    )
+                )
+
+            if tables:
+
+                for table in tables:
+
+                    st.markdown(
+                        f"**{table['title']}**"
+                    )
+
+                    data = table["data"]
+
+                    if isinstance(
+                        data,
+                        pd.Series
+                    ):
+
+                        data = data.to_frame().T
+
+                    st.dataframe(
+                        data,
+                        use_container_width=True,
+                        hide_index=False
                     )
 
 
 # =========================================================
-# QUESTION INPUT
+# CHAT INPUT
 # =========================================================
 
 question = st.chat_input(
-    "Ask anything about your uploaded files..."
+    "Ask about your files..."
 )
 
 if st.session_state.selected_question:
@@ -2531,7 +2809,7 @@ if st.session_state.selected_question:
 
 
 # =========================================================
-# PROCESS QUESTION
+# RUN QUESTION
 # =========================================================
 
 if question:
@@ -2551,13 +2829,20 @@ if question:
     st.session_state.chat_history.append(
         {
             "role": "assistant",
-            "content": result["answer"],
+            "content": result.get(
+                "answer",
+                ""
+            ),
             "fields": result.get(
                 "fields",
                 []
             ),
             "sources": result.get(
                 "sources",
+                []
+            ),
+            "table_results": result.get(
+                "table_results",
                 []
             )
         }
