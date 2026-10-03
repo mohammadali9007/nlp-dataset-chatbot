@@ -25,83 +25,6 @@ MODEL_NAME = "gemini-3.8-flash"
 
 
 # =========================================================
-# SIMPLE PROFESSIONAL UI
-# =========================================================
-
-st.markdown("""
-<style>
-
-.block-container {
-    max-width: 1200px;
-    padding-top: 2rem;
-}
-
-.title {
-    font-size: 38px;
-    font-weight: 700;
-}
-
-.subtitle {
-    color: #777;
-    margin-bottom: 25px;
-}
-
-[data-testid="stMetric"] {
-    border: 1px solid rgba(128,128,128,0.2);
-    border-radius: 12px;
-    padding: 15px;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-
-st.markdown(
-    '<div class="title">🤖 IntelliMind AI</div>',
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    '<div class="subtitle">'
-    'CSV + TXT Intelligent Knowledge Base Chatbot'
-    '</div>',
-    unsafe_allow_html=True
-)
-
-
-# =========================================================
-# GEMINI API
-# =========================================================
-
-api_key = ""
-
-try:
-    api_key = st.secrets.get(
-        "GEMINI_API_KEY",
-        ""
-    )
-except Exception:
-    pass
-
-if not api_key:
-    api_key = os.getenv(
-        "GEMINI_API_KEY",
-        ""
-    )
-
-client = None
-
-if api_key:
-
-    try:
-        client = genai.Client(
-            api_key=api_key
-        )
-    except Exception:
-        client = None
-
-
-# =========================================================
 # SESSION STATE
 # =========================================================
 
@@ -116,7 +39,160 @@ if "chat_history" not in st.session_state:
 
 
 # =========================================================
-# NORMALIZE TEXT
+# GEMINI CLIENT
+# =========================================================
+
+api_key = None
+
+try:
+    api_key = st.secrets.get("GEMINI_API_KEY", None)
+except Exception:
+    api_key = None
+
+if not api_key:
+    api_key = os.getenv("GEMINI_API_KEY")
+
+client = None
+
+if api_key:
+    try:
+        client = genai.Client(api_key=api_key)
+    except Exception:
+        client = None
+
+
+# =========================================================
+# HEADER
+# =========================================================
+
+st.title("🤖 IntelliMind AI")
+st.caption(
+    "AI Knowledge Assistant • CSV Analysis • TXT Knowledge Base"
+)
+
+st.divider()
+
+
+# =========================================================
+# SIDEBAR
+# =========================================================
+
+with st.sidebar:
+
+    st.header("📁 Knowledge Base")
+
+    uploaded_files = st.file_uploader(
+        "Upload CSV or TXT files",
+        type=["csv", "txt"],
+        accept_multiple_files=True
+    )
+
+    if uploaded_files:
+
+        for file in uploaded_files:
+
+            try:
+
+                if file.name.lower().endswith(".csv"):
+
+                    try:
+                        df = pd.read_csv(file)
+
+                    except Exception:
+
+                        file.seek(0)
+
+                        try:
+                            df = pd.read_csv(
+                                file,
+                                encoding="latin1"
+                            )
+                        except Exception:
+                            file.seek(0)
+
+                            df = pd.read_csv(
+                                file,
+                                encoding="cp1252"
+                            )
+
+                    st.session_state.csv_data[file.name] = df
+
+                elif file.name.lower().endswith(".txt"):
+
+                    raw = file.getvalue()
+
+                    try:
+                        text = raw.decode("utf-8")
+
+                    except UnicodeDecodeError:
+
+                        try:
+                            text = raw.decode("utf-8-sig")
+
+                        except UnicodeDecodeError:
+
+                            try:
+                                text = raw.decode("cp1252")
+
+                            except UnicodeDecodeError:
+                                text = raw.decode(
+                                    "latin1",
+                                    errors="ignore"
+                                )
+
+                    st.session_state.txt_data[file.name] = text
+
+            except Exception as e:
+
+                st.error(
+                    f"Could not read {file.name}: {e}"
+                )
+
+    st.divider()
+
+    st.subheader("📊 CSV Files")
+
+    if st.session_state.csv_data:
+
+        for name, df in st.session_state.csv_data.items():
+
+            st.write(
+                f"**{name}**  \n"
+                f"Rows: {len(df)} | Columns: {len(df.columns)}"
+            )
+
+    else:
+
+        st.info("No CSV uploaded.")
+
+    st.divider()
+
+    st.subheader("📄 TXT Files")
+
+    if st.session_state.txt_data:
+
+        for name, text in st.session_state.txt_data.items():
+
+            st.write(
+                f"**{name}**  \n"
+                f"Characters: {len(text):,}"
+            )
+
+    else:
+
+        st.info("No TXT uploaded.")
+
+    st.divider()
+
+    if st.button("🗑️ Clear Chat", use_container_width=True):
+
+        st.session_state.chat_history = []
+
+        st.rerun()
+
+
+# =========================================================
+# TEXT NORMALIZATION
 # =========================================================
 
 def normalize_text(text):
@@ -127,7 +203,7 @@ def normalize_text(text):
     text = text.replace("-", " ")
 
     text = re.sub(
-        r"[^a-zA-Z0-9\s]",
+        r"[^a-z0-9\s]",
         " ",
         text
     )
@@ -142,7 +218,7 @@ def normalize_text(text):
 
 
 # =========================================================
-# FUZZY MATCH
+# FUZZY MATCHING
 # =========================================================
 
 def fuzzy_match(
@@ -156,218 +232,27 @@ def fuzzy_match(
 
     word = normalize_text(word)
 
-    normalized = {
-        normalize_text(str(x)): x
-        for x in choices
+    normalized_choices = {
+        normalize_text(choice): choice
+        for choice in choices
     }
 
     matches = difflib.get_close_matches(
         word,
-        list(normalized.keys()),
+        normalized_choices.keys(),
         n=1,
         cutoff=cutoff
     )
 
     if matches:
 
-        return normalized[
-            matches[0]
-        ]
+        return normalized_choices[matches[0]]
 
     return None
 
 
 # =========================================================
-# SIDEBAR
-# =========================================================
-
-with st.sidebar:
-
-    st.header("📁 Knowledge Base")
-
-    uploaded_files = st.file_uploader(
-        "Upload CSV / TXT files",
-        type=["csv", "txt"],
-        accept_multiple_files=True
-    )
-
-    if uploaded_files:
-
-        for uploaded_file in uploaded_files:
-
-            filename = uploaded_file.name
-
-            try:
-
-                # =========================================
-                # CSV
-                # =========================================
-
-                if filename.lower().endswith(".csv"):
-
-                    df = pd.read_csv(
-                        uploaded_file
-                    )
-
-                    st.session_state.csv_data[
-                        filename
-                    ] = df
-
-
-                # =========================================
-                # TXT
-                # =========================================
-
-                elif filename.lower().endswith(".txt"):
-
-                    text = uploaded_file.read().decode(
-                        "utf-8",
-                        errors="ignore"
-                    )
-
-                    st.session_state.txt_data[
-                        filename
-                    ] = text
-
-            except Exception as e:
-
-                st.error(
-                    f"Error reading {filename}: {e}"
-                )
-
-
-    st.divider()
-
-
-    if st.session_state.csv_data:
-
-        st.subheader("📊 CSV Files")
-
-        for filename, df in st.session_state.csv_data.items():
-
-            st.write(
-                f"• {filename} "
-                f"({len(df):,} rows)"
-            )
-
-
-    if st.session_state.txt_data:
-
-        st.subheader("📄 TXT Files")
-
-        for filename in st.session_state.txt_data:
-
-            st.write(
-                f"• {filename}"
-            )
-
-
-    st.divider()
-
-
-    if st.button(
-        "🗑️ Clear Chat",
-        use_container_width=True
-    ):
-
-        st.session_state.chat_history = []
-
-        st.rerun()
-
-
-# =========================================================
-# CHECK FILE
-# =========================================================
-
-if (
-    not st.session_state.csv_data
-    and
-    not st.session_state.txt_data
-):
-
-    st.info(
-        "👈 Upload CSV or TXT files to start."
-    )
-
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-
-        st.markdown("""
-        ### 📊 CSV
-
-        • Average glucose  
-        • Highest BMI  
-        • Number of patients  
-        • Missing values
-        """)
-
-    with col2:
-
-        st.markdown("""
-        ### 📄 TXT
-
-        • What is NLP?  
-        • Explain AI  
-        • Find information  
-        • Summarize text
-        """)
-
-    with col3:
-
-        st.markdown("""
-        ### 🔀 Hybrid
-
-        • CSV + TXT  
-        • Typo tolerance  
-        • Relevant answers  
-        • Source display
-        """)
-
-    st.stop()
-
-
-# =========================================================
-# FILE METRICS
-# =========================================================
-
-total_csv = len(
-    st.session_state.csv_data
-)
-
-total_txt = len(
-    st.session_state.txt_data
-)
-
-total_rows = sum(
-    len(df)
-    for df in st.session_state.csv_data.values()
-)
-
-
-c1, c2, c3 = st.columns(3)
-
-with c1:
-    st.metric(
-        "📁 Total Files",
-        total_csv + total_txt
-    )
-
-with c2:
-    st.metric(
-        "📊 CSV Files",
-        total_csv
-    )
-
-with c3:
-    st.metric(
-        "📄 TXT Files",
-        total_txt
-    )
-
-
-# =========================================================
-# GET ALL COLUMNS
+# GET ALL CSV COLUMNS
 # =========================================================
 
 def get_all_columns():
@@ -379,7 +264,6 @@ def get_all_columns():
         for col in df.columns:
 
             if col not in columns:
-
                 columns.append(col)
 
     return columns
@@ -391,154 +275,191 @@ def get_all_columns():
 
 def get_numeric_columns():
 
-    columns = []
+    numeric_columns = []
 
     for df in st.session_state.csv_data.values():
 
-        numeric_columns = df.select_dtypes(
-            include=np.number
-        ).columns
+        for col in df.columns:
 
-        for col in numeric_columns:
+            if pd.api.types.is_numeric_dtype(
+                df[col]
+            ):
 
-            if col not in columns:
+                if col not in numeric_columns:
+                    numeric_columns.append(col)
 
-                columns.append(col)
-
-    return columns
+    return numeric_columns
 
 
 # =========================================================
-# FIND RELEVANT CSV COLUMNS
+# FIND RELEVANT COLUMNS
 # =========================================================
 
 def find_relevant_columns(question):
 
-    q = normalize_text(
-        question
-    )
+    question_normalized = normalize_text(question)
 
     all_columns = get_all_columns()
 
-    relevant = []
+    matched = []
 
+    # -----------------------------------------------------
+    # Direct / fuzzy column matching
+    # -----------------------------------------------------
 
-    # -----------------------------------------
-    # Exact / partial match
-    # -----------------------------------------
+    for column in all_columns:
 
-    for col in all_columns:
+        normalized_column = normalize_text(column)
 
-        normalized_col = normalize_text(
-            col
-        )
+        if normalized_column in question_normalized:
 
-        if normalized_col in q:
-
-            relevant.append(col)
+            matched.append(column)
 
             continue
 
-        for word in normalized_col.split():
+        for word in normalized_column.split():
 
-            if len(word) >= 3:
+            if len(word) < 3:
+                continue
 
-                if word in q:
+            if word in question_normalized:
 
-                    relevant.append(col)
+                matched.append(column)
 
-                    break
+                break
 
+            fuzzy = fuzzy_match(
+                word,
+                question_normalized.split(),
+                cutoff=0.78
+            )
 
-    # -----------------------------------------
-    # Fuzzy matching
-    # -----------------------------------------
+            if fuzzy:
 
-    for word in q.split():
+                matched.append(column)
 
-        if len(word) < 3:
-            continue
+                break
 
-        match = fuzzy_match(
-            word,
-            all_columns,
-            cutoff=0.60
-        )
-
-        if match and match not in relevant:
-
-            relevant.append(match)
-
-
-    # -----------------------------------------
+    # -----------------------------------------------------
     # Diabetes synonyms
-    # -----------------------------------------
+    # -----------------------------------------------------
 
-    synonym_map = {
+    synonyms = {
 
         "sugar": [
-            "glucose"
+            "Glucose"
         ],
 
         "blood sugar": [
-            "glucose"
+            "Glucose"
+        ],
+
+        "blood glucose": [
+            "Glucose"
         ],
 
         "pressure": [
-            "bloodpressure",
-            "blood pressure"
+            "BloodPressure",
+            "bp"
+        ],
+
+        "blood pressure": [
+            "BloodPressure",
+            "bp"
         ],
 
         "pregnancy": [
-            "pregnancies"
+            "Pregnancies"
+        ],
+
+        "pregnancies": [
+            "Pregnancies"
+        ],
+
+        "pregnant": [
+            "Pregnancies"
         ],
 
         "diabetes": [
-            "outcome",
-            "diabetes"
+            "Outcome",
+            "dm"
         ],
 
         "diabetic": [
-            "outcome",
-            "diabetes"
+            "Outcome",
+            "dm"
         ],
 
         "bmi": [
-            "bmi"
+            "BMI"
         ],
 
         "insulin": [
-            "insulin"
+            "Insulin"
         ],
 
         "age": [
+            "Age",
             "age"
+        ],
+
+        "skin": [
+            "SkinThickness"
+        ],
+
+        "pedigree": [
+            "DiabetesPedigreeFunction"
+        ],
+
+        "glucose": [
+            "Glucose",
+            "bgr"
+        ],
+
+        "creatinine": [
+            "sc"
+        ],
+
+        "urea": [
+            "bu"
+        ],
+
+        "hemoglobin": [
+            "hemo"
+        ],
+
+        "sodium": [
+            "sod"
+        ],
+
+        "potassium": [
+            "pot"
+        ],
+
+        "classification": [
+            "classification"
         ]
     }
 
+    for keyword, cols in synonyms.items():
 
-    for key, possible_columns in synonym_map.items():
+        if keyword in question_normalized:
 
-        if key in q:
+            for col in cols:
 
-            for col in all_columns:
-
-                col_normalized = normalize_text(
-                    col
-                )
-
-                for possible in possible_columns:
+                for actual_column in all_columns:
 
                     if normalize_text(
-                        possible
-                    ) in col_normalized:
+                        actual_column
+                    ) == normalize_text(col):
 
-                        if col not in relevant:
+                        if actual_column not in matched:
 
-                            relevant.append(col)
+                            matched.append(
+                                actual_column
+                            )
 
-
-    return relevant
+    return matched
 
 
 # =========================================================
@@ -550,37 +471,26 @@ def split_text(
     chunk_size=1200
 ):
 
-    words = text.split()
+    text = str(text)
+
+    if not text.strip():
+        return []
 
     chunks = []
 
-    current = []
+    for i in range(
+        0,
+        len(text),
+        chunk_size
+    ):
 
-    length = 0
+        chunk = text[
+            i:i + chunk_size
+        ].strip()
 
-    for word in words:
+        if chunk:
 
-        current.append(word)
-
-        length += len(word) + 1
-
-        if length >= chunk_size:
-
-            chunks.append(
-                " ".join(current)
-            )
-
-            current = []
-
-            length = 0
-
-
-    if current:
-
-        chunks.append(
-            " ".join(current)
-        )
-
+            chunks.append(chunk)
 
     return chunks
 
@@ -594,83 +504,78 @@ def search_txt(
     top_k=5
 ):
 
-    documents = []
-
-    sources = []
-
+    all_chunks = []
 
     for filename, text in st.session_state.txt_data.items():
 
-        chunks = split_text(
-            text
-        )
+        chunks = split_text(text)
 
         for chunk in chunks:
 
-            documents.append(
-                chunk
+            all_chunks.append(
+                (
+                    filename,
+                    chunk
+                )
             )
 
-            sources.append(
-                filename
-            )
-
-
-    if not documents:
-
+    if not all_chunks:
         return []
 
+    documents = [
+        chunk
+        for _, chunk in all_chunks
+    ]
+
+    question_normalized = normalize_text(
+        question
+    )
 
     try:
 
         vectorizer = TfidfVectorizer(
-            stop_words="english",
-            ngram_range=(1, 2)
+            stop_words="english"
         )
 
         matrix = vectorizer.fit_transform(
-            documents
+            documents + [question_normalized]
         )
 
-        query_vector = vectorizer.transform(
-            [question]
-        )
-
-        scores = cosine_similarity(
-            query_vector,
-            matrix
+        similarities = cosine_similarity(
+            matrix[-1],
+            matrix[:-1]
         )[0]
-
-        ranked = np.argsort(
-            scores
-        )[::-1]
-
-
-        results = []
-
-
-        for index in ranked[:top_k]:
-
-            if scores[index] > 0.02:
-
-                results.append({
-
-                    "text": documents[index],
-
-                    "source": sources[index],
-
-                    "score": float(
-                        scores[index]
-                    )
-                })
-
-
-        return results
-
 
     except Exception:
 
         return []
+
+    ranked_indices = np.argsort(
+        similarities
+    )[::-1]
+
+    results = []
+
+    for index in ranked_indices[:top_k]:
+
+        score = float(
+            similarities[index]
+        )
+
+        if score <= 0:
+            continue
+
+        filename, chunk = all_chunks[index]
+
+        results.append(
+            {
+                "file": filename,
+                "text": chunk,
+                "score": score
+            }
+        )
+
+    return results
 
 
 # =========================================================
@@ -679,45 +584,59 @@ def search_txt(
 
 def search_csv(question):
 
+    results = []
+
     relevant_columns = find_relevant_columns(
         question
     )
 
-    results = []
-
-
     for filename, df in st.session_state.csv_data.items():
 
-        columns = [
-            col
-            for col in relevant_columns
-            if col in df.columns
-        ]
+        if relevant_columns:
 
+            available_columns = [
+                col
+                for col in relevant_columns
+                if col in df.columns
+            ]
 
-        if not columns:
+        else:
 
-            numeric = df.select_dtypes(
-                include=np.number
-            ).columns.tolist()
+            available_columns = list(
+                df.columns
+            )
 
-            columns = numeric[:10]
+        if not available_columns:
+            continue
 
+        preview = df[
+            available_columns
+        ].head(20)
 
-        if columns:
-
-            results.append({
-
+        results.append(
+            {
                 "file": filename,
-
-                "columns": columns,
-
-                "data": df[columns].copy()
-
-            })
-
+                "columns": available_columns,
+                "data": preview
+            }
+        )
 
     return results
+
+
+# =========================================================
+# OPERATION DETECTION
+# =========================================================
+
+def contains_any(
+    text,
+    words
+):
+
+    return any(
+        word in text
+        for word in words
+    )
 
 
 # =========================================================
@@ -726,29 +645,31 @@ def search_csv(question):
 
 def direct_analysis(question):
 
-    q = normalize_text(
-        question
-    )
+    q = normalize_text(question)
+
+    answers = []
 
     relevant_columns = find_relevant_columns(
         question
     )
 
-    numeric_columns = get_numeric_columns()
+    # =====================================================
+    # TOTAL ROW COUNT
+    # =====================================================
 
-    answers = []
-
-
-    # =========================================
-    # ROW COUNT
-    # =========================================
-
-    if (
-        "how many rows" in q
-        or "total rows" in q
-        or "number of rows" in q
-        or "how many patient" in q
-        or "how many patients" in q
+    if contains_any(
+        q,
+        [
+            "how many rows",
+            "number of rows",
+            "total rows",
+            "how many patients",
+            "number of patients",
+            "total patients",
+            "how many records",
+            "number of records",
+            "total records"
+        ]
     ):
 
         total = sum(
@@ -756,239 +677,431 @@ def direct_analysis(question):
             for df in st.session_state.csv_data.values()
         )
 
-        answers.append(
-            f"The dataset contains **{total:,} records**."
+        # Diabetic patient count
+        if (
+            "diabetic" in q
+            or "diabetes patient" in q
+            or "diabetes patients" in q
+        ):
+
+            count = 0
+
+            for df in st.session_state.csv_data.values():
+
+                outcome_col = None
+
+                for col in df.columns:
+
+                    if normalize_text(col) == "outcome":
+
+                        outcome_col = col
+
+                        break
+
+                if outcome_col:
+
+                    values = pd.to_numeric(
+                        df[outcome_col],
+                        errors="coerce"
+                    )
+
+                    count += int(
+                        (values == 1).sum()
+                    )
+
+            if count > 0:
+
+                return (
+                    f"There are **{count:,} diabetic "
+                    f"patients** in the uploaded dataset."
+                )
+
+        return (
+            f"There are **{total:,} total records** "
+            f"in the uploaded CSV files."
         )
 
+    # =====================================================
+    # COLUMN COUNT
+    # =====================================================
 
-    # =========================================
-    # COLUMNS
-    # =========================================
-
-    if (
-        "what are the columns" in q
-        or "column names" in q
-        or "list columns" in q
+    if contains_any(
+        q,
+        [
+            "how many columns",
+            "number of columns",
+            "total columns"
+        ]
     ):
 
-        answers.append(
-            "The columns are:\n\n"
-            +
-            "\n".join(
-                f"- `{col}`"
-                for col in get_all_columns()
+        total_columns = sum(
+            len(df.columns)
+            for df in st.session_state.csv_data.values()
+        )
+
+        return (
+            f"There are **{total_columns} columns** "
+            f"in the uploaded CSV files."
+        )
+
+    # =====================================================
+    # COLUMN NAMES
+    # =====================================================
+
+    if contains_any(
+        q,
+        [
+            "column names",
+            "columns are",
+            "what columns",
+            "list columns",
+            "show columns"
+        ]
+    ):
+
+        lines = []
+
+        for filename, df in st.session_state.csv_data.items():
+
+            lines.append(
+                f"**{filename}:** "
+                + ", ".join(
+                    str(col)
+                    for col in df.columns
+                )
             )
-        )
 
+        return "\n\n".join(lines)
 
-    # =========================================
-    # AVERAGE
-    # =========================================
-
-    if (
-        "average" in q
-        or "mean" in q
-        or "avg" in q
-    ):
-
-        target_columns = [
-            col
-            for col in relevant_columns
-            if col in numeric_columns
-        ]
-
-
-        # Fuzzy numeric column detection
-        if not target_columns:
-
-            for word in q.split():
-
-                match = fuzzy_match(
-                    word,
-                    numeric_columns,
-                    cutoff=0.60
-                )
-
-                if match and match not in target_columns:
-
-                    target_columns.append(
-                        match
-                    )
-
-
-        for column in target_columns:
-
-            values = []
-
-            for df in st.session_state.csv_data.values():
-
-                if column in df.columns:
-
-                    vals = pd.to_numeric(
-                        df[column],
-                        errors="coerce"
-                    ).dropna()
-
-                    values.extend(
-                        vals.tolist()
-                    )
-
-
-            if values:
-
-                answers.append(
-                    f"The average **{column}** is "
-                    f"**{np.mean(values):.2f}**."
-                )
-
-
-    # =========================================
-    # HIGHEST
-    # =========================================
-
-    if (
-        "highest" in q
-        or "maximum" in q
-        or "largest" in q
-        or "max value" in q
-    ):
-
-        target_columns = [
-            col
-            for col in relevant_columns
-            if col in numeric_columns
-        ]
-
-
-        for column in target_columns:
-
-            values = []
-
-            for df in st.session_state.csv_data.values():
-
-                if column in df.columns:
-
-                    vals = pd.to_numeric(
-                        df[column],
-                        errors="coerce"
-                    ).dropna()
-
-                    values.extend(
-                        vals.tolist()
-                    )
-
-
-            if values:
-
-                answers.append(
-                    f"The highest **{column}** is "
-                    f"**{max(values):.2f}**."
-                )
-
-
-    # =========================================
-    # LOWEST
-    # =========================================
-
-    if (
-        "lowest" in q
-        or "minimum" in q
-        or "smallest" in q
-        or "min value" in q
-    ):
-
-        target_columns = [
-            col
-            for col in relevant_columns
-            if col in numeric_columns
-        ]
-
-
-        for column in target_columns:
-
-            values = []
-
-            for df in st.session_state.csv_data.values():
-
-                if column in df.columns:
-
-                    vals = pd.to_numeric(
-                        df[column],
-                        errors="coerce"
-                    ).dropna()
-
-                    values.extend(
-                        vals.tolist()
-                    )
-
-
-            if values:
-
-                answers.append(
-                    f"The lowest **{column}** is "
-                    f"**{min(values):.2f}**."
-                )
-
-
-    # =========================================
+    # =====================================================
     # MISSING VALUES
-    # =========================================
+    # =====================================================
 
-    if (
-        "missing" in q
-        or "null" in q
-        or "empty" in q
+    if contains_any(
+        q,
+        [
+            "missing",
+            "null",
+            "empty values",
+            "missing values",
+            "null values"
+        ]
     ):
 
-        total_missing = 0
+        output = []
 
-        for df in st.session_state.csv_data.values():
+        for filename, df in st.session_state.csv_data.items():
 
-            total_missing += int(
-                df.isna().sum().sum()
-            )
+            missing = df.isnull().sum()
 
+            missing = missing[
+                missing > 0
+            ]
 
-        answers.append(
-            f"The dataset contains "
-            f"**{total_missing:,} missing values**."
-        )
+            if len(missing) == 0:
 
+                output.append(
+                    f"**{filename}:** No missing values."
+                )
 
-    # =========================================
-    # UNIQUE
-    # =========================================
+            else:
 
-    if (
-        "unique" in q
-        and relevant_columns
+                lines = [
+                    f"{col}: {int(count)}"
+                    for col, count
+                    in missing.items()
+                ]
+
+                output.append(
+                    f"**{filename}:**\n"
+                    + "\n".join(lines)
+                )
+
+        return "\n\n".join(output)
+
+    # =====================================================
+    # UNIQUE VALUES
+    # =====================================================
+
+    if contains_any(
+        q,
+        [
+            "unique values",
+            "distinct values",
+            "different values"
+        ]
     ):
 
-        for column in relevant_columns:
+        output = []
 
-            for df in st.session_state.csv_data.values():
+        for filename, df in st.session_state.csv_data.items():
 
-                if column in df.columns:
+            cols = relevant_columns
 
-                    count = df[column].nunique()
+            if not cols:
+                cols = list(df.columns)
 
-                    answers.append(
-                        f"`{column}` has "
-                        f"**{count:,} unique values**."
+            for col in cols:
+
+                if col not in df.columns:
+                    continue
+
+                values = df[col].dropna().unique()
+
+                if len(values) <= 30:
+
+                    output.append(
+                        f"**{filename} → {col}:** "
+                        + ", ".join(
+                            str(v)
+                            for v in values
+                        )
                     )
 
+        if output:
+            return "\n".join(output)
 
-    if answers:
+    # =====================================================
+    # AVERAGE / MEAN
+    # =====================================================
 
-        return "\n\n".join(
-            dict.fromkeys(answers)
-        )
+    if contains_any(
+        q,
+        [
+            "average",
+            "avg",
+            "mean"
+        ]
+    ):
+
+        if not relevant_columns:
+
+            relevant_columns = get_numeric_columns()
+
+        output = []
+
+        for filename, df in st.session_state.csv_data.items():
+
+            for col in relevant_columns:
+
+                if col not in df.columns:
+                    continue
+
+                if not pd.api.types.is_numeric_dtype(
+                    df[col]
+                ):
+                    continue
+
+                value = pd.to_numeric(
+                    df[col],
+                    errors="coerce"
+                ).mean()
+
+                if pd.notna(value):
+
+                    output.append(
+                        f"**{col}** average: "
+                        f"**{value:.2f}** "
+                        f"({filename})"
+                    )
+
+        if output:
+
+            return "\n".join(output)
+
+    # =====================================================
+    # MAXIMUM
+    # =====================================================
+
+    if contains_any(
+        q,
+        [
+            "highest",
+            "maximum",
+            "max",
+            "largest",
+            "greatest"
+        ]
+    ):
+
+        if not relevant_columns:
+
+            relevant_columns = get_numeric_columns()
+
+        output = []
+
+        for filename, df in st.session_state.csv_data.items():
+
+            for col in relevant_columns:
+
+                if col not in df.columns:
+                    continue
+
+                if not pd.api.types.is_numeric_dtype(
+                    df[col]
+                ):
+                    continue
+
+                value = pd.to_numeric(
+                    df[col],
+                    errors="coerce"
+                ).max()
+
+                if pd.notna(value):
+
+                    output.append(
+                        f"**{col}** highest value: "
+                        f"**{value:g}** "
+                        f"({filename})"
+                    )
+
+        if output:
+
+            return "\n".join(output)
+
+    # =====================================================
+    # MINIMUM
+    # =====================================================
+
+    if contains_any(
+        q,
+        [
+            "lowest",
+            "minimum",
+            "min",
+            "smallest"
+        ]
+    ):
+
+        if not relevant_columns:
+
+            relevant_columns = get_numeric_columns()
+
+        output = []
+
+        for filename, df in st.session_state.csv_data.items():
+
+            for col in relevant_columns:
+
+                if col not in df.columns:
+                    continue
+
+                if not pd.api.types.is_numeric_dtype(
+                    df[col]
+                ):
+                    continue
+
+                value = pd.to_numeric(
+                    df[col],
+                    errors="coerce"
+                ).min()
+
+                if pd.notna(value):
+
+                    output.append(
+                        f"**{col}** lowest value: "
+                        f"**{value:g}** "
+                        f"({filename})"
+                    )
+
+        if output:
+
+            return "\n".join(output)
+
+    # =====================================================
+    # SUM
+    # =====================================================
+
+    if contains_any(
+        q,
+        [
+            "sum",
+            "total of",
+            "total"
+        ]
+    ):
+
+        if not relevant_columns:
+
+            relevant_columns = get_numeric_columns()
+
+        output = []
+
+        for filename, df in st.session_state.csv_data.items():
+
+            for col in relevant_columns:
+
+                if col not in df.columns:
+                    continue
+
+                if not pd.api.types.is_numeric_dtype(
+                    df[col]
+                ):
+                    continue
+
+                value = pd.to_numeric(
+                    df[col],
+                    errors="coerce"
+                ).sum()
+
+                if pd.notna(value):
+
+                    output.append(
+                        f"**{col}** total: "
+                        f"**{value:g}** "
+                        f"({filename})"
+                    )
+
+        if output:
+
+            return "\n".join(output)
+
+    # =====================================================
+    # MEDIAN
+    # =====================================================
+
+    if "median" in q:
+
+        if not relevant_columns:
+
+            relevant_columns = get_numeric_columns()
+
+        output = []
+
+        for filename, df in st.session_state.csv_data.items():
+
+            for col in relevant_columns:
+
+                if col not in df.columns:
+                    continue
+
+                if not pd.api.types.is_numeric_dtype(
+                    df[col]
+                ):
+                    continue
+
+                value = pd.to_numeric(
+                    df[col],
+                    errors="coerce"
+                ).median()
+
+                if pd.notna(value):
+
+                    output.append(
+                        f"**{col}** median: "
+                        f"**{value:.2f}** "
+                        f"({filename})"
+                    )
+
+        if output:
+
+            return "\n".join(output)
 
     return None
 
 
 # =========================================================
-# CSV CONTEXT
+# BUILD CSV CONTEXT
 # =========================================================
 
 def build_csv_context(question):
@@ -999,78 +1112,227 @@ def build_csv_context(question):
 
     if not results:
 
-        return "No relevant CSV information found."
+        return ""
 
-
-    context = []
-
+    context_parts = []
 
     for result in results:
 
-        data = result["data"].head(
-            50
+        filename = result["file"]
+        columns = result["columns"]
+        data = result["data"]
+
+        context_parts.append(
+            f"FILE: {filename}\n"
+            f"COLUMNS: {', '.join(map(str, columns))}\n"
+            f"DATA:\n{data.to_string(index=False)}"
         )
 
-        context.append(
-            f"""
-SOURCE FILE:
-{result["file"]}
-
-COLUMNS:
-{", ".join(result["columns"])}
-
-DATA:
-{data.to_csv(index=False)}
-"""
-        )
-
-
-    return "\n".join(
-        context
+    return "\n\n".join(
+        context_parts
     )
 
 
 # =========================================================
-# TXT CONTEXT
+# BUILD TXT CONTEXT
 # =========================================================
 
 def build_txt_context(question):
 
     results = search_txt(
-        question
+        question,
+        top_k=5
     )
 
     if not results:
 
-        return "No relevant TXT information found."
+        return ""
 
-
-    context = []
-
+    context_parts = []
 
     for result in results:
 
-        context.append(
-            f"""
-SOURCE FILE:
-{result["source"]}
-
-RELEVANCE SCORE:
-{result["score"]:.3f}
-
-TEXT:
-{result["text"]}
-"""
+        context_parts.append(
+            f"FILE: {result['file']}\n"
+            f"RELEVANCE: {result['score']:.3f}\n"
+            f"CONTENT:\n{result['text']}"
         )
 
-
-    return "\n".join(
-        context
+    return "\n\n".join(
+        context_parts
     )
 
 
 # =========================================================
-# GEMINI
+# LOCAL TXT ANSWER
+# =========================================================
+
+def local_txt_answer(question):
+
+    results = search_txt(
+        question,
+        top_k=5
+    )
+
+    if not results:
+
+        return None
+
+    # -----------------------------------------------------
+    # Strong lexical matching
+    # -----------------------------------------------------
+
+    q_words = set(
+        normalize_text(question).split()
+    )
+
+    best_result = None
+    best_score = 0
+
+    for result in results:
+
+        text_words = set(
+            normalize_text(
+                result["text"]
+            ).split()
+        )
+
+        overlap = len(
+            q_words & text_words
+        )
+
+        score = (
+            overlap * 0.2
+            + result["score"]
+        )
+
+        if score > best_score:
+
+            best_score = score
+            best_result = result
+
+    if best_result and best_score >= 0.25:
+
+        return best_result["text"]
+
+    return None
+
+
+# =========================================================
+# BUILT-IN GENERAL KNOWLEDGE
+# =========================================================
+
+def built_in_answer(question):
+
+    q = normalize_text(
+        question
+    )
+
+    # -----------------------------------------------------
+    # Machine Learning
+    # -----------------------------------------------------
+
+    ml_keywords = [
+        "what is ml",
+        "what is machine learning",
+        "define machine learning",
+        "ml meaning",
+        "machine learning meaning"
+    ]
+
+    if any(
+        keyword in q
+        for keyword in ml_keywords
+    ):
+
+        return (
+            "**Machine Learning (ML)** is a branch "
+            "of Artificial Intelligence (AI) that allows "
+            "computers to learn patterns from data and "
+            "make predictions or decisions without being "
+            "explicitly programmed for every task.\n\n"
+            "**Example:** A machine learning model can "
+            "learn from previous patient data and predict "
+            "whether a patient may have diabetes."
+        )
+
+    # -----------------------------------------------------
+    # Artificial Intelligence
+    # -----------------------------------------------------
+
+    if (
+        "what is ai" in q
+        or "what is artificial intelligence" in q
+        or "define artificial intelligence" in q
+    ):
+
+        return (
+            "**Artificial Intelligence (AI)** is a field "
+            "of computer science that focuses on creating "
+            "systems that can perform tasks that normally "
+            "require human intelligence, such as learning, "
+            "reasoning, understanding language, and "
+            "recognizing patterns."
+        )
+
+    # -----------------------------------------------------
+    # Deep Learning
+    # -----------------------------------------------------
+
+    if (
+        "what is dl" in q
+        or "what is deep learning" in q
+        or "define deep learning" in q
+    ):
+
+        return (
+            "**Deep Learning (DL)** is a subfield of "
+            "Machine Learning that uses multi-layer "
+            "neural networks to learn complex patterns "
+            "from large amounts of data."
+        )
+
+    # -----------------------------------------------------
+    # NLP
+    # -----------------------------------------------------
+
+    if (
+        "what is nlp" in q
+        or "what is natural language processing" in q
+        or "define nlp" in q
+    ):
+
+        return (
+            "**Natural Language Processing (NLP)** is a "
+            "branch of AI that enables computers to "
+            "process, understand, and generate human "
+            "language.\n\n"
+            "Examples include chatbots, translation, "
+            "sentiment analysis, text classification, "
+            "and question answering."
+        )
+
+    # -----------------------------------------------------
+    # Python
+    # -----------------------------------------------------
+
+    if (
+        "what is python" in q
+        or "define python" in q
+    ):
+
+        return (
+            "**Python** is a high-level programming "
+            "language known for its simple syntax and "
+            "wide use in web development, data science, "
+            "Machine Learning, AI, and automation."
+        )
+
+    return None
+
+
+# =========================================================
+# GEMINI ANSWER
 # =========================================================
 
 def generate_ai_answer(
@@ -1082,77 +1344,39 @@ def generate_ai_answer(
 
     if client is None:
 
-        if direct_answer:
-
-            return direct_answer
-
-        return (
-            "⚠️ Gemini API key is missing.\n\n"
-            "Add GEMINI_API_KEY to Streamlit Secrets."
-        )
-
+        return None, "Gemini API is not configured."
 
     prompt = f"""
-You are IntelliMind AI.
+You are IntelliMind AI, a helpful knowledge assistant.
 
-You are a CSV and TXT knowledge-base assistant.
-
-Answer the user's question using the uploaded
-information.
-
-IMPORTANT:
-
-1. Use uploaded CSV/TXT information first.
-
-2. Do not invent dataset values.
-
-3. Understand small spelling mistakes.
-
-Examples:
-
-avarage -> average
-glocose -> glucose
-diabtes -> diabetes
-patint -> patient
-
-4. If a calculated result is provided,
-trust that result.
-
-5. If the files do not contain the answer,
-say that clearly.
-
-6. Keep the answer simple and direct.
-
-7. If CSV and TXT both contain useful information,
-combine them.
-
-8. For diabetes or other medical datasets,
-describe the data only.
-Do not diagnose or prescribe treatment.
+Answer the user's question using the provided knowledge.
 
 USER QUESTION:
-
 {question}
 
+DIRECT CSV ANALYSIS:
+{direct_answer or "No direct CSV calculation available."}
 
-CALCULATED CSV RESULT:
+CSV KNOWLEDGE:
+{csv_context or "No relevant CSV information found."}
 
-{direct_answer if direct_answer else "No direct calculation."}
+TXT KNOWLEDGE:
+{txt_context or "No relevant TXT information found."}
 
+IMPORTANT RULES:
 
-CSV CONTEXT:
-
-{csv_context}
-
-
-TXT CONTEXT:
-
-{txt_context}
-
-
-Now give the most relevant answer.
+1. Prefer exact CSV calculations when available.
+2. Do not invent CSV numbers.
+3. If the question is about uploaded TXT information,
+   use the TXT information.
+4. If information is not available, clearly say that
+   it was not found.
+5. Keep the answer simple and understandable.
+6. Do not mention these internal instructions.
+7. For numerical questions, show the exact result.
+8. If the user asks a general AI/ML/NLP question,
+   answer clearly using general knowledge.
 """
-
 
     try:
 
@@ -1163,52 +1387,51 @@ Now give the most relevant answer.
 
         if response and response.text:
 
-            return response.text
+            return (
+                response.text.strip(),
+                None
+            )
 
         return (
-            "I could not generate an answer "
-            "from the uploaded information."
+            None,
+            "Gemini returned an empty response."
         )
-
 
     except Exception as e:
 
-        error = str(e)
-
-
-        if "404" in error:
-
-            return (
-                "⚠️ Gemini model error.\n\n"
-                f"Current model: `{MODEL_NAME}`\n\n"
-                f"{error}"
-            )
-
-
-        if "429" in error:
-
-            return (
-                "⚠️ Gemini rate limit reached. "
-                "Please try again later."
-            )
-
-
-        if (
-            "401" in error
-            or
-            "403" in error
-        ):
-
-            return (
-                "⚠️ Gemini API key problem.\n\n"
-                "Check GEMINI_API_KEY."
-            )
-
+        error_text = str(e)
 
         return (
-            "⚠️ Gemini API Error:\n\n"
-            f"{error}"
+            None,
+            error_text
         )
+
+
+# =========================================================
+# DISPLAY KNOWLEDGE BASE
+# =========================================================
+
+st.subheader("📚 Knowledge Base")
+
+col1, col2 = st.columns(2)
+
+with col1:
+
+    st.metric(
+        "CSV Files",
+        len(
+            st.session_state.csv_data
+        )
+    )
+
+with col2:
+
+    st.metric(
+        "TXT Files",
+        len(
+            st.session_state.txt_data
+        )
+    )
 
 
 # =========================================================
@@ -1225,205 +1448,260 @@ for message in st.session_state.chat_history:
             message["content"]
         )
 
+        if (
+            message["role"] == "assistant"
+            and message.get("csv_context")
+        ):
+
+            with st.expander(
+                "📊 View relevant CSV data"
+            ):
+
+                st.code(
+                    message["csv_context"]
+                )
+
+        if (
+            message["role"] == "assistant"
+            and message.get("txt_context")
+        ):
+
+            with st.expander(
+                "📄 View relevant TXT information"
+            ):
+
+                st.code(
+                    message["txt_context"]
+                )
+
 
 # =========================================================
 # CHAT INPUT
 # =========================================================
 
 question = st.chat_input(
-    "Ask anything about your files..."
+    "Ask something about your CSV or TXT files..."
 )
 
 
+# =========================================================
+# PROCESS QUESTION
+# =========================================================
+
 if question:
 
-    # =========================================
-    # USER
-    # =========================================
+    # -----------------------------------------------------
+    # Show user message
+    # -----------------------------------------------------
 
-    st.session_state.chat_history.append({
-        "role": "user",
-        "content": question
-    })
-
+    st.session_state.chat_history.append(
+        {
+            "role": "user",
+            "content": question
+        }
+    )
 
     with st.chat_message("user"):
 
-        st.markdown(
-            question
+        st.markdown(question)
+
+    # -----------------------------------------------------
+    # Local analysis
+    # -----------------------------------------------------
+
+    direct_answer = direct_analysis(
+        question
+    )
+
+    # -----------------------------------------------------
+    # TXT search
+    # -----------------------------------------------------
+
+    txt_context = build_txt_context(
+        question
+    )
+
+    # -----------------------------------------------------
+    # CSV search
+    # -----------------------------------------------------
+
+    csv_context = build_csv_context(
+        question
+    )
+
+    # -----------------------------------------------------
+    # Local TXT answer
+    # -----------------------------------------------------
+
+    local_answer = local_txt_answer(
+        question
+    )
+
+    # -----------------------------------------------------
+    # Built-in answer
+    # -----------------------------------------------------
+
+    builtin = built_in_answer(
+        question
+    )
+
+    # -----------------------------------------------------
+    # Decide answer
+    # -----------------------------------------------------
+
+    answer = None
+    error_message = None
+
+    # Priority 1:
+    # Exact CSV calculation
+
+    if direct_answer:
+
+        answer = direct_answer
+
+    # Priority 2:
+    # Built-in basic AI/ML/NLP questions
+
+    elif builtin:
+
+        answer = builtin
+
+    # Priority 3:
+    # TXT Knowledge Base
+
+    elif local_answer:
+
+        answer = local_answer
+
+    # Priority 4:
+    # Gemini
+
+    else:
+
+        answer, error_message = generate_ai_answer(
+            question,
+            csv_context,
+            txt_context,
+            direct_answer
         )
 
+    # -----------------------------------------------------
+    # If Gemini failed
+    # -----------------------------------------------------
 
-    # =========================================
-    # ASSISTANT
-    # =========================================
+    if not answer:
 
-    with st.chat_message("assistant"):
+        if local_answer:
 
-        with st.spinner(
-            "🔎 Searching your files..."
-        ):
+            answer = local_answer
 
-            direct_answer = direct_analysis(
-                question
-            )
+        elif builtin:
 
-            csv_context = build_csv_context(
-                question
-            )
+            answer = builtin
 
-            txt_context = build_txt_context(
-                question
-            )
+        elif direct_answer:
 
+            answer = direct_answer
 
-        with st.spinner(
-            "🤖 Generating answer..."
-        ):
+        else:
 
-            answer = generate_ai_answer(
-                question,
-                csv_context,
-                txt_context,
-                direct_answer
-            )
+            if error_message:
 
+                if (
+                    "429" in error_message
+                    or "RESOURCE_EXHAUSTED"
+                    in error_message
+                    or "rate" in error_message.lower()
+                ):
 
-        st.markdown(
-            answer
-        )
+                    answer = (
+                        "⚠️ Gemini rate limit reached.\n\n"
+                        "I could not generate an AI answer "
+                        "right now. Please try again later."
+                    )
 
+                elif (
+                    "404" in error_message
+                    or "not found"
+                    in error_message.lower()
+                ):
 
-        # =====================================
-        # CSV SOURCE
-        # =====================================
+                    answer = (
+                        "⚠️ Gemini model is unavailable "
+                        "for this API key/project."
+                    )
 
-        csv_results = search_csv(
-            question
-        )
+                elif (
+                    "401" in error_message
+                    or "403" in error_message
+                ):
 
-        if csv_results:
+                    answer = (
+                        "⚠️ Gemini API key problem. "
+                        "Please check your GEMINI_API_KEY."
+                    )
+
+                else:
+
+                    answer = (
+                        "⚠️ I could not generate an answer "
+                        "from the available knowledge."
+                    )
+
+            else:
+
+                answer = (
+                    "I could not find a relevant answer "
+                    "in the uploaded files."
+                )
+
+    # -----------------------------------------------------
+    # Show assistant answer
+    # -----------------------------------------------------
+
+    with st.chat_message(
+        "assistant"
+    ):
+
+        st.markdown(answer)
+
+        # -------------------------------------------------
+        # CSV source
+        # -------------------------------------------------
+
+        if csv_context:
 
             with st.expander(
                 "📊 View relevant CSV data"
             ):
 
-                for result in csv_results:
+                st.code(
+                    csv_context
+                )
 
-                    st.caption(
-                        f"Source: {result['file']}"
-                    )
+        # -------------------------------------------------
+        # TXT source
+        # -------------------------------------------------
 
-                    st.dataframe(
-                        result["data"].head(20),
-                        use_container_width=True
-                    )
-
-
-        # =====================================
-        # TXT SOURCE
-        # =====================================
-
-        txt_results = search_txt(
-            question
-        )
-
-        if txt_results:
+        if txt_context:
 
             with st.expander(
                 "📄 View relevant TXT information"
             ):
 
-                for result in txt_results:
-
-                    st.caption(
-                        f"{result['source']} "
-                        f"| score: "
-                        f"{result['score']:.2f}"
-                    )
-
-                    st.write(
-                        result["text"][:1500]
-                    )
-
-
-    # =========================================
-    # SAVE ASSISTANT
-    # =========================================
-
-    st.session_state.chat_history.append({
-        "role": "assistant",
-        "content": answer
-    })
-
-
-# =========================================================
-# KNOWLEDGE BASE INFO
-# =========================================================
-
-with st.expander(
-    "📋 Knowledge Base Information"
-):
-
-    if st.session_state.csv_data:
-
-        st.markdown(
-            "### 📊 CSV Files"
-        )
-
-        for filename, df in st.session_state.csv_data.items():
-
-            st.write(
-                f"**{filename}**"
-            )
-
-            st.write(
-                f"Rows: {len(df):,} | "
-                f"Columns: {len(df.columns)}"
-            )
-
-            st.write(
-                "Columns: "
-                +
-                ", ".join(
-                    str(c)
-                    for c in df.columns
+                st.code(
+                    txt_context
                 )
-            )
 
+    # -----------------------------------------------------
+    # Save history
+    # -----------------------------------------------------
 
-    if st.session_state.txt_data:
-
-        st.markdown(
-            "### 📄 TXT Files"
-        )
-
-        for filename, text in st.session_state.txt_data.items():
-
-            st.write(
-                f"**{filename}**"
-            )
-
-            st.write(
-                f"Characters: {len(text):,}"
-            )
-
-
-# =========================================================
-# CSV PREVIEW
-# =========================================================
-
-with st.expander(
-    "👀 Preview CSV Data"
-):
-
-    for filename, df in st.session_state.csv_data.items():
-
-        st.markdown(
-            f"### {filename}"
-        )
-
-        st.dataframe(
-            df.head(20),
-            use_container_width=True
-        )
+    st.session_state.chat_history.append(
+        {
+            "role": "assistant",
+            "content": answer,
+            "csv_context": csv_context,
+            "txt_context": txt_context
+        }
+    )
